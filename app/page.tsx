@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { Logo } from "@/components/ui/Logo";
+
+export default function Home() {
+  return (
+    <main className="show-grid flex min-h-screen items-center">
+      <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
+        <section>
+          <Logo />
+          <h1 className="mt-10 max-w-3xl text-5xl font-black leading-tight text-white md:text-7xl">Fahrduell</h1>
+          <p className="mt-5 max-w-2xl text-xl text-white/78">
+            Das Fahrlehrer-Quiz für Live-Unterricht mit QR-Code, schnellen Antworten und Rangliste im Showmodus.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link className="rounded border border-show-gold bg-show-gold px-6 py-3 font-black text-show-navy shadow-glow" href="/login">
+              Login
+            </Link>
+            <Link className="rounded border border-white/20 px-6 py-3 font-bold text-white hover:border-show-gold" href="/dashboard">
+              Demo starten
+            </Link>
+          </div>
+        </section>
+        <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6 shadow-2xl">
+          <div className="text-sm font-bold uppercase text-show-gold">Live bereit</div>
+          <div className="mt-5 grid gap-3">
+            {["QR-Code beitreten", "Synchrone Fragen", "Punkte nach Tempo", "CSV-Ergebnis"].map((item) => (
+              <div key={item} className="rounded border border-white/10 bg-white/5 p-4 text-lg font-bold">
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,198 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/join/[joinCode]",
+      "regex": "^/api/join/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPjoinCode": "nxtPjoinCode"
+      },
+      "namedRegex": "^/api/join/(?<nxtPjoinCode>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/quizzes/[id]",
+      "regex": "^/api/quizzes/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/quizzes/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/results/[sessionId]",
+      "regex": "^/api/results/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/results/(?<nxtPsessionId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/results/[sessionId]/export.csv",
+      "regex": "^/api/results/([^/]+?)/export\\.csv(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/results/(?<nxtPsessionId>[^/]+?)/export\\.csv(?:/)?$"
+    },
+    {
+      "page": "/api/sessions/[sessionId]",
+      "regex": "^/api/sessions/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/sessions/(?<nxtPsessionId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/sessions/[sessionId]/finish",
+      "regex": "^/api/sessions/([^/]+?)/finish(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/sessions/(?<nxtPsessionId>[^/]+?)/finish(?:/)?$"
+    },
+    {
+      "page": "/api/sessions/[sessionId]/next",
+      "regex": "^/api/sessions/([^/]+?)/next(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/sessions/(?<nxtPsessionId>[^/]+?)/next(?:/)?$"
+    },
+    {
+      "page": "/api/sessions/[sessionId]/reveal",
+      "regex": "^/api/sessions/([^/]+?)/reveal(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/sessions/(?<nxtPsessionId>[^/]+?)/reveal(?:/)?$"
+    },
+    {
+      "page": "/api/sessions/[sessionId]/start",
+      "regex": "^/api/sessions/([^/]+?)/start(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/api/sessions/(?<nxtPsessionId>[^/]+?)/start(?:/)?$"
+    },
+    {
+      "page": "/host/[sessionId]",
+      "regex": "^/host/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/host/(?<nxtPsessionId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/join/[joinCode]",
+      "regex": "^/join/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPjoinCode": "nxtPjoinCode"
+      },
+      "namedRegex": "^/join/(?<nxtPjoinCode>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/play/[participantId]",
+      "regex": "^/play/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPparticipantId": "nxtPparticipantId"
+      },
+      "namedRegex": "^/play/(?<nxtPparticipantId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/quizzes/[id]/edit",
+      "regex": "^/quizzes/([^/]+?)/edit(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/quizzes/(?<nxtPid>[^/]+?)/edit(?:/)?$"
+    },
+    {
+      "page": "/results/[sessionId]",
+      "regex": "^/results/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/results/(?<nxtPsessionId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/sessions/[sessionId]/lobby",
+      "regex": "^/sessions/([^/]+?)/lobby(?:/)?$",
+      "routeKeys": {
+        "nxtPsessionId": "nxtPsessionId"
+      },
+      "namedRegex": "^/sessions/(?<nxtPsessionId>[^/]+?)/lobby(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/quizzes",
+      "regex": "^/quizzes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/quizzes(?:/)?$"
+    },
+    {
+      "page": "/quizzes/new",
+      "regex": "^/quizzes/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/quizzes/new(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

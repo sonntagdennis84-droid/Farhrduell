@@ -1,0 +1,230 @@
+1. Ziel dieses Dokuments
+Das Quiz wurde lokal von Codex umgesetzt und ist aktuell unter http://127.0.0.1:3000/login erreichbar. Dieses Dokument enthält die nächsten konkreten Entwicklungsanweisungen, damit Fahrduell von einer lokalen Testlösung zu einer online erreichbaren, produktionsfähigen Plattform ausgebaut wird.
+Dieses Dokument ist als direkte Übergabe an Codex gedacht. Codex soll die Punkte nacheinander abarbeiten, Commit-fähige Änderungen erzeugen und nach jedem Abschnitt eine kurze technische Zusammenfassung liefern.
+2. Aktueller Status
+3. Wichtig: Localhost vs. Online
+127.0.0.1 bedeutet immer 'dieses Gerät selbst'. Ein Teilnehmer-Handy, das den QR-Code scannt, kann damit nicht auf den Entwickler-PC zugreifen, außer es läuft auf demselben Gerät. Für echte Nutzung muss der QR-Code eine öffentliche HTTPS-Adresse oder mindestens eine LAN-IP enthalten.
+Falsch für echte Teilnehmer:
+http://127.0.0.1:3000/join/AB72X
+
+Richtig für Online-Betrieb:
+https://fahrduell.de/join/AB72X
+
+Richtig für lokalen WLAN-Test:
+http://192.168.178.45:3000/join/AB72X
+4. Empfohlene Deployment-Strategie
+Für Fahrduell ist Echtzeitfähigkeit entscheidend. Die Plattform sollte daher so aufgebaut werden, dass sie unabhängig von einem einzelnen Anbieter läuft. Empfehlung für Version 1.0: Dockerfähige Next.js/Node-Anwendung mit PostgreSQL und WebSocket-/Socket.IO-Unterstützung.
+Codex soll die Anwendung nicht fest auf einen Anbieter verdrahten. Stattdessen soll es ein sauberes Produktionssetup mit Docker, ENV-Variablen und dokumentierten Deploy-Schritten vorbereiten.
+5. Direktes Codex-Skript: Online-Deployment vorbereiten
+AUFGABE FÜR CODEX:
+Du arbeitest an der bestehenden Fahrduell-Codebasis. Ziel ist es, die lokale MVP-Version produktionsfähig und online deploybar zu machen.
+
+Arbeite schrittweise und erstelle saubere Commits oder zumindest klar getrennte Änderungspakete. Verändere keine Kernlogik unnötig. Bewahre das bestehende Design und die Fahrduell-CI.
+
+WICHTIGER KONTEXT:
+- Aktuell läuft die App lokal unter http://127.0.0.1:3000/login.
+- Teilnehmer können sich bereits per QR-Code anmelden.
+- Der QR-Code darf in Produktion nicht mehr auf localhost/127.0.0.1 zeigen.
+- Die Plattform muss online per HTTPS erreichbar sein.
+- Realtime-Funktionen müssen über öffentliche Domain funktionieren.
+
+SETZE FOLGENDE PUNKTE UM:
+1. Repository analysieren
+2. Umgebungsvariablen einführen
+3. QR-Code-URL dynamisch machen
+4. Produktionsdatenbank vorbereiten
+5. Prisma-Migrationen prüfen
+6. Build- und Startskripte prüfen
+7. Dockerfile und docker-compose erstellen
+8. Healthcheck-Route erstellen
+9. Realtime/Socket-Konfiguration produktionsfähig machen
+10. CORS/Allowed-Origin-Konzept einbauen
+11. Auth-Secrets absichern
+12. Deployment-Dokumentation ergänzen
+13. Akzeptanztests für Online-Betrieb definieren
+6. Konkrete technische Aufgaben
+6.1 Repository-Audit
+☐ Prüfe package.json, Framework-Versionen, Startskripte, Datenbankkonfiguration, Socket-Setup und Authentifizierung.
+☐ Dokumentiere, ob SQLite, PostgreSQL, In-Memory-State oder lokale Dateien verwendet werden.
+☐ Finde alle hart codierten localhost-, 127.0.0.1- oder Port-3000-URLs und ersetze sie durch zentrale Konfiguration.
+☐ Prüfe, ob QR-Code, Socket-Client und API-Client dieselbe Base-URL-Logik nutzen.
+6.2 Environment-Konzept
+☐ Erstelle eine .env.example mit allen benötigten Variablen.
+☐ Nutze NEXT_PUBLIC_APP_URL für öffentlich sichtbare Links und QR-Codes.
+☐ Nutze APP_URL oder SERVER_URL für serverseitige absolute URLs.
+☐ Nutze DATABASE_URL für PostgreSQL.
+☐ Nutze AUTH_SECRET oder NEXTAUTH_SECRET für Authentifizierung.
+☐ Secrets niemals in Git committen.
+6.3 QR-Code produktionsfähig machen
+☐ QR-Code-Link muss aus NEXT_PUBLIC_APP_URL + /join/[joinCode] erzeugt werden.
+☐ Wenn NEXT_PUBLIC_APP_URL fehlt, im Development fallback auf http://localhost:3000 erlauben.
+☐ In Produktion darf kein localhost-Link erzeugt werden.
+☐ Zeige in der Lobby zusätzlich den Klartext-Link und den Join-Code an.
+6.4 Datenbank & Migrationen
+☐ Für Produktion PostgreSQL verwenden.
+☐ Prisma schema prüfen und Migrationen erzeugen.
+☐ Production-Deployment muss npx prisma migrate deploy ausführen.
+☐ Optional: Seed-Skript für ersten Admin-User erstellen.
+☐ Daten dürfen nach Server-Neustart nicht verloren gehen.
+6.5 Realtime / Socket.IO
+☐ Socket-Server so konfigurieren, dass er außerhalb von localhost funktioniert.
+☐ Allowed Origins aus ENV lesen.
+☐ Bei mehreren Server-Instanzen Redis-Adapter vorbereiten oder dokumentieren.
+☐ Reconnect-Verhalten testen: Teilnehmer darf bei kurzer Unterbrechung nicht aus dem Spiel fallen.
+☐ Room-Struktur pro GameSession sauber trennen.
+6.6 Docker & Production Build
+☐ Erstelle ein Dockerfile für die App.
+☐ Erstelle docker-compose.yml für App + PostgreSQL + optional Redis.
+☐ Build-Befehl muss reproduzierbar laufen.
+☐ Container muss über PORT konfigurierbar sein.
+☐ Healthcheck muss verfügbar sein.
+6.7 Security-Basics
+☐ HTTPS im Produktivbetrieb erzwingen.
+☐ Sichere Cookies in Produktion aktivieren.
+☐ Admin-/Dozentenbereiche vor unbefugtem Zugriff schützen.
+☐ Join-Codes zufällig und nicht erratbar erzeugen.
+☐ Rate-Limits für Login und Join-Endpunkte prüfen.
+☐ Keine Secrets oder Stacktraces im Frontend anzeigen.
+6.8 Deployment-Dokumentation
+☐ Erstelle docs/DEPLOYMENT.md.
+☐ Dokumentiere lokale Entwicklung, Staging und Produktion.
+☐ Dokumentiere alle ENV-Variablen.
+☐ Dokumentiere Datenbankmigration und Admin-Seed.
+☐ Dokumentiere Domain/HTTPS/QR-Code-Test.
+☐ Dokumentiere Rollback-Schritte.
+7. Vorgeschlagene .env.example
+# Public app URL used for QR codes and participant links
+NEXT_PUBLIC_APP_URL=https://fahrduell.example.com
+
+# Server-side base URL
+APP_URL=https://fahrduell.example.com
+
+# Database
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/fahrduell?schema=public
+
+# Auth
+AUTH_SECRET=replace-with-long-random-secret
+NEXTAUTH_SECRET=replace-with-long-random-secret-if-nextauth-is-used
+
+# Realtime / Socket
+SOCKET_CORS_ORIGIN=https://fahrduell.example.com
+REDIS_URL=redis://default:PASSWORD@HOST:6379
+
+# Runtime
+NODE_ENV=production
+PORT=3000
+
+# Optional initial admin seed
+INITIAL_ADMIN_EMAIL=admin@fahrduell.de
+INITIAL_ADMIN_PASSWORD=change-me-before-production
+8. Gewünschte Dateien im Repository
+9. Ablauf für den ersten Online-Test
+1. Code in ein Git-Repository committen.
+2. Hosting-Anbieter wählen: Railway/Render/Fly.io/VPS oder Vercel nach Socket-Kompatibilitätstest.
+3. PostgreSQL-Datenbank anlegen.
+4. Environment-Variablen im Hosting-Dashboard setzen.
+5. Build ausführen lassen.
+6. Prisma Migrationen ausführen: npx prisma migrate deploy.
+7. Admin-User anlegen oder Seed ausführen.
+8. Öffentliche URL öffnen: /login testen.
+9. Quiz starten und QR-Code scannen.
+10. Mit mindestens zwei Smartphones außerhalb des Entwickler-PCs testen.
+11. Live-Frage, Antwort, Rangliste und Endergebnis testen.
+12. Domain verbinden und HTTPS prüfen.
+13. Erst danach als Version 1.0 markieren.
+10. Akzeptanzkriterien für Version 1.0 Online
+☐ Login funktioniert über öffentliche HTTPS-URL.
+☐ QR-Code enthält keine localhost- oder 127.0.0.1-Adresse.
+☐ Teilnehmer können mit Smartphone über Mobilfunk oder anderes WLAN beitreten.
+☐ Mindestens 20 Teilnehmer können gleichzeitig in einer Testsession beitreten.
+☐ Fragen werden synchron an Moderator und Teilnehmer ausgespielt.
+☐ Antworten werden genau einmal gespeichert.
+☐ Punkteberechnung bleibt korrekt.
+☐ Rangliste aktualisiert sich live.
+☐ Daten bleiben nach Neustart erhalten.
+☐ Datenbankmigration ist dokumentiert.
+☐ Admin-/Dozentenbereich ist geschützt.
+☐ Es gibt eine klare Deployment-Anleitung im Repository.
+11. Premium-Version: Implementierungsliste
+Die folgenden Funktionen sollten nach dem stabilen Online-MVP priorisiert umgesetzt werden. Reihenfolge: Stabilität zuerst, dann Lernmehrwert, dann Show-Effekte.
+12. Codex-Skript: Premium-Roadmap nach MVP
+AUFGABE FÜR CODEX NACH ERFOLGREICHEM ONLINE-MVP:
+Erweitere Fahrduell iterativ. Jede Premium-Funktion muss als eigenes Feature-Paket umgesetzt werden. Keine große Big-Bang-Änderung.
+
+Reihenfolge:
+1. Unterrichtsmodus mit Erklärung und Erinnerungsfrage
+2. CSV-Import und Ergebnisexport
+3. Fragensammlungen und Kategorien
+4. Kurs-/Klassenverwaltung
+5. Teammodus
+6. Joker-System
+7. Lernanalyse und Gamification
+8. Show-Effekte, Sound, Animationen
+
+Für jedes Feature:
+- Datenmodell prüfen/erweitern
+- UI-Komponenten ergänzen
+- API/Socket-Events ergänzen
+- Tests schreiben
+- Akzeptanzkriterien erfüllen
+- Kurzdokumentation in docs/ ergänzen
+13. Testplan für den nächsten Schritt
+14. Technische Hinweise / Quellenstand
+Stand 26.06.2026: Next.js kann offiziell als Node.js-Server, Docker-Container, statischer Export oder über Adapter bereitgestellt werden. Für Fahrduell sind Node.js/Docker geeigneter als statischer Export, weil Live-Quiz, Auth und Datenbank benötigt werden.
+Prisma empfiehlt für Produktionsmigrationen den Befehl npx prisma migrate deploy. Dieser Schritt muss in Deployment/CI berücksichtigt werden.
+Socket.IO benötigt bei mehreren Serverinstanzen je nach Konfiguration Sticky Sessions und/oder einen Adapter wie Redis. Für MVP reicht eine einzelne Instanz; für Skalierung muss Redis vorbereitet werden.
+Vercel hat WebSocket-Support im Juni 2026 als Public Beta eingeführt. Da die Funktion neu ist, soll Codex die bestehende Socket.IO-Architektur dort gesondert testen. Für die erste stabile Version bleibt Docker/Node auf einer Plattform mit dauerhaftem Node-Prozess die konservativere Empfehlung.
+15. Klare nächste Aufgabe
+Codex soll als nächstes ausschließlich das Online-Deployment vorbereiten und keine neuen Premium-Funktionen beginnen. Ziel ist ein stabiler öffentlicher MVP mit funktionierendem QR-Code, echter Datenbank, HTTPS, produktionsfähigem Build und dokumentiertem Deployment.
+FAHRDUELL | Das Fahrlehrer-Quiz | Codex-Skript: Online-Deployment, Produktionsreife & Premium-Roadmap | Version 1.0 · Stand: 26.06.2026
+Bereich || Status / Bewertung
+Lokaler Betrieb || Die Plattform läuft lokal auf 127.0.0.1:3000. Das ist nur auf dem eigenen Rechner erreichbar.
+Login || Login-Seite ist vorhanden.
+QR-Code-Beitritt || Teilnehmer können sich per QR-Code anmelden. Der QR-Link muss für Produktion dynamisch auf die öffentliche Domain zeigen.
+Live-Quiz || Grundfunktionen scheinen vorhanden. Für Produktion müssen Socket-/Realtime-Verbindungen außerhalb von localhost geprüft werden.
+Datenhaltung || Prüfen, ob aktuell lokale Datenbank/SQLite/In-Memory genutzt wird. Für online Betrieb ist PostgreSQL empfohlen.
+Nächster Schritt || Deployment-ready machen: Umgebungsvariablen, Datenbank, Migrationen, Build, Hosting, Domain, HTTPS, Monitoring.
+Option || Eignung || Vorteil || Hinweis
+Railway / Render / Fly.io || Sehr gut für MVP || Schnell online, Postgres einfach, Node-Prozess möglich || Ideal für ersten öffentlichen Test.
+VPS / Hetzner + Docker || Sehr gut langfristig || Volle Kontrolle, günstig skalierbar || Etwas mehr Setup: Nginx, SSL, Backups.
+Vercel || Gut, aber prüfen || Sehr einfach für Next.js || WebSockets sind seit Juni 2026 Public Beta; Kompatibilität mit bestehender Socket.IO-Architektur testen.
+Nur lokaler Server || Nicht ausreichend || Schnell zum Testen || Nicht für echte Teilnehmer außerhalb des lokalen Netzwerks.
+Datei || Zweck
+.env.example || Vorlage für alle Umgebungsvariablen
+Dockerfile || Produktionsfähiger App-Container
+docker-compose.yml || Lokaler produktionsnaher Test mit App + Postgres
+docs/DEPLOYMENT.md || Schritt-für-Schritt-Deployment
+docs/PRODUCTION_CHECKLIST.md || Checkliste vor Onlinegang
+scripts/seed-admin.ts || Optionaler Admin-Seed
+app/api/health/route.ts oder pages/api/health.ts || Healthcheck-Endpunkt
+README.md || Kurzanleitung aktualisieren
+Priorität || Funktion || Beschreibung
+Priorität A || Unterrichtsmodus || Nach jeder Frage Erklärung, Merksatz und Erinnerungsfrage anzeigen.
+Priorität A || CSV-Fragenimport || Fragen schnell aus Tabellen importieren, inklusive Erklärung und Kategorie.
+Priorität A || Ergebnisexport || CSV/Excel-Export mit Name, Punkte, richtige Antworten, Antwortzeiten, Kategorien.
+Priorität A || Fragensammlungen || Technik, Recht, Pädagogik, Verkehrserziehung usw. getrennt verwalten.
+Priorität A || Kurs-/Klassenverwaltung || Teilnehmer Kursen zuordnen und Ergebnisse historisch speichern.
+Priorität B || Teammodus || Teilnehmer in Teams spielen lassen, mit Einzel- und Teamwertung.
+Priorität B || Joker-System || 50:50, Zusatzzeit, Publikumsjoker, Teamjoker.
+Priorität B || Bilder in Fragen || Bildfragen für Verkehrszeichen, Technikskizzen, Situationen.
+Priorität B || Lernanalyse || Stärken/Schwächen je Fach, Kategorieauswertung und Lernempfehlung.
+Priorität B || Gamification || XP, Level, Badges, Streaks, Titel, Saisonrangliste.
+Priorität C || Soundeffekte || Intro, Countdown, richtige/falsche Antwort, Gewinner.
+Priorität C || Animierte Rangliste || Punkte zählen hoch, Plätze wechseln animiert.
+Priorität C || Dark-Show-Modus Plus || Mehr Bühnenlicht, Partikel, Spannungsanimationen.
+Priorität C || Moderationsskript || Dozent erhält Hinweise, wann Erklärung/Joker/Ranking eingeblendet wird.
+Priorität C || KI-Fragengenerator || Aus Lerntexten automatisch Fragen, Antworten und Erklärungen erzeugen.
+Priorität C || Mobile PWA || Installierbare Web-App mit App-Icon und Offline-Grundfunktionen.
+Priorität D || Mandantenfähigkeit || Mehrere Fahrschulen/Dozenten getrennt verwalten.
+Priorität D || Zahlungsmodell || Lizenzen, Nutzerpakete, Testzugänge, Rechnungsdaten.
+Priorität D || Audit-Logs || Nachvollziehbarkeit für Admin-Aktionen und Ergebnisänderungen.
+Priorität D || White-Label || CI pro Fahrschule anpassbar.
+Test || Erwartung
+QR-Code-Test || QR-Code mit Smartphone scannen. URL muss öffentlich sein.
+Multi-Geräte-Test || Moderator am Laptop, 3 Teilnehmer über verschiedene Smartphones.
+Netzwerk-Test || Teilnehmer über Mobilfunk testen, nicht nur im gleichen WLAN.
+Reconnect-Test || Smartphone kurz sperren/Internet wechseln, danach weiter teilnehmen.
+Datenbank-Test || Server neu starten; Quiz, Teilnehmer und Ergebnisse müssen erhalten bleiben.
+Last-Test klein || 20 simulierte Teilnehmer oder echte Geräte.
+Sicherheits-Test || Teilnehmer darf keine Adminseiten öffnen.
+Export-Test || Endergebnis exportieren und Datei öffnen.

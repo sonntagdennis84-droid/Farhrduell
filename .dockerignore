@@ -1,0 +1,9 @@
+.next
+node_modules
+outputs
+work
+.env
+.env.local
+npm-debug.log
+Dockerfile
+docker-compose.yml
