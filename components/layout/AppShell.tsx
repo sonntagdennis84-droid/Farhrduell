@@ -17,9 +17,11 @@ export function AppShell({ children }: PropsWithChildren) {
             <Link className="hover:text-show-gold" href="/dashboard">
               Dashboard
             </Link>
-            <Link className="hover:text-show-gold" href="/api/auth/logout">
-              Logout
-            </Link>
+            <form action="/api/auth/logout" method="post">
+              <button className="hover:text-show-gold" type="submit">
+                Logout
+              </button>
+            </form>
           </nav>
         </div>
       </header>
