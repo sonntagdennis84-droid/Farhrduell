@@ -6,22 +6,7 @@ import type { AnswerOption, GameSession, Participant, Question, Quiz } from "@/t
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Logo } from "@/components/ui/Logo";
 import { TimerRing } from "@/components/quiz/TimerRing";
-import { isAnswerLocked, isAnswerRevealed, isExplanationVisible } from "@/lib/session-state";
-
-function QuestionMedia({ question }: { question: Question }) {
-  if (!question.mediaUrl || question.mediaType === "none") return null;
-
-  return (
-    <figure className="mt-4 overflow-hidden rounded-lg border border-white/10 bg-black/25">
-      {question.mediaType === "video" ? (
-        <video className="max-h-56 w-full object-contain" src={question.mediaUrl} controls muted playsInline />
-      ) : (
-        <img className="max-h-56 w-full object-contain" src={question.mediaUrl} alt={question.mediaAlt || question.questionText} />
-      )}
-      {question.mediaCaption && <figcaption className="border-t border-white/10 px-3 py-2 text-xs font-semibold text-white/70">{question.mediaCaption}</figcaption>}
-    </figure>
-  );
-}
+import { isAnswerLocked, isAnswerRevealed } from "@/lib/session-state";
 
 function remainingSeconds(session: GameSession, question: Question) {
   const startedAt = session.currentQuestionStartedAt ? new Date(session.currentQuestionStartedAt).getTime() : Date.now();
@@ -39,7 +24,6 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   const active = currentSession.status === "QUESTION_ACTIVE";
   const locked = isAnswerLocked(currentSession.status);
   const revealed = isAnswerRevealed(currentSession.status);
-  const explanationVisible = isExplanationVisible(currentSession.status);
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -120,7 +104,6 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
               <p className="text-xs font-black uppercase text-show-gold">
                 Frage {question ? currentSession.currentQuestionIndex + 1 : 0} von {quiz.questions.length}
               </p>
-              <h1 className="mt-2 text-2xl font-black leading-tight text-white">{question?.questionText ?? "Gleich geht es los."}</h1>
               <p className="mt-2 text-xs font-black uppercase text-white/55">
                 {active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Aufloesung" : "Warten"}
               </p>
@@ -128,31 +111,21 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
             {question && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
           </div>
 
-          {question && <QuestionMedia question={question} />}
-
           <div className="mt-5 grid flex-1 content-center gap-3">
             {answerTexts &&
               (["A", "B", "C", "D"] as const).map((option) => (
                 <div key={option} className={revealed && option === question?.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>
                   <AnswerButton
                     option={option}
-                    text={answerTexts[option]}
+                    text=""
                     selected={selected === option}
                     disabled={!active || !!selected}
-                    className="min-h-[5.25rem] rounded-lg px-4 py-4"
+                    className="min-h-[7.5rem] justify-center rounded-lg px-4 py-4 [&>span:last-child]:hidden"
                     onClick={() => answer(option)}
                   />
                 </div>
               ))}
           </div>
-
-          {revealed && question && (
-            <div className="mt-4 rounded border border-show-gold/40 bg-show-gold/10 p-3">
-              <p className="font-black text-show-gold">Richtig: Antwort {question.correctAnswer}</p>
-              {explanationVisible && question.explanation && <p className="mt-1 text-sm leading-relaxed text-white/80">{question.explanation}</p>}
-              {explanationVisible && question.memorySentence && <p className="mt-2 text-sm font-bold leading-relaxed text-show-gold">{question.memorySentence}</p>}
-            </div>
-          )}
 
           <div className="mt-4 min-h-7 text-center">
             {message && <p className="font-black text-show-gold">{message}</p>}
