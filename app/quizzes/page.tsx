@@ -28,9 +28,14 @@ export default function QuizzesPage() {
     <AppShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-4xl font-black">Quizze</h1>
-        <Link className="rounded border border-show-gold bg-show-gold px-5 py-3 font-black text-show-navy" href="/quizzes/new">
-          Neu
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link className="rounded border border-white/20 px-5 py-3 font-black hover:border-show-gold hover:text-show-gold" href="/quizzes/import">
+            Import
+          </Link>
+          <Link className="rounded border border-show-gold bg-show-gold px-5 py-3 font-black text-show-navy" href="/quizzes/new">
+            Neu
+          </Link>
+        </div>
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {quizzes.map((quiz) => (

@@ -3,7 +3,7 @@ import type { Answer, AnswerOption, GameSession, Participant, Question, Quiz } f
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
 
-type QuizInput = Partial<Quiz> & {
+type QuizInput = Omit<Partial<Quiz>, "questions"> & {
   title: string;
   questions: Array<
     Partial<Question> & Pick<Question, "questionText" | "answerA" | "answerB" | "answerC" | "answerD" | "correctAnswer">
