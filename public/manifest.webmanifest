@@ -2,11 +2,32 @@
   "name": "Fahrduell Moderator",
   "short_name": "Fahrduell",
   "description": "Moderator-Fernbedienung fuer Fahrduell Live-Quizze",
-  "start_url": "/dashboard",
+  "start_url": "/login?app=1",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#08182E",
   "theme_color": "#08182E",
   "orientation": "portrait",
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/fahrduell.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Quiz importieren",
+      "short_name": "Import",
+      "url": "/quizzes/import",
+      "icons": [{ "src": "/icons/fahrduell.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Quizze",
+      "short_name": "Quizze",
+      "url": "/quizzes",
+      "icons": [{ "src": "/icons/fahrduell.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/fahrduell.svg",

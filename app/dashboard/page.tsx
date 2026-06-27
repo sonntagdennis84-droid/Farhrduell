@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { Panel } from "@/components/ui/Panel";
 import { listQuizzes } from "@/features/sessions/store";
 
@@ -9,7 +10,13 @@ export default async function DashboardPage() {
   const quizzes = await listQuizzes();
   return (
     <AppShell>
-      <h1 className="text-4xl font-black">Dashboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black">Dashboard</h1>
+          <p className="mt-2 text-white/65">Moderator-App, Quizverwaltung und Live-Start an einem Ort.</p>
+        </div>
+        <InstallAppButton />
+      </div>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <Link href="/quizzes/new">
           <Panel className="h-full hover:border-show-gold">

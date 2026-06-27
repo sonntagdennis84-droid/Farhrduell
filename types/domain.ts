@@ -10,7 +10,7 @@ export type SessionStatus =
   | "LEADERBOARD_VISIBLE"
   | "QUESTION_FINISHED"
   | "FINISHED";
-export type MediaType = "none" | "image" | "video";
+export type MediaType = "none" | "image" | "video" | "audio";
 
 export type Question = {
   id: string;

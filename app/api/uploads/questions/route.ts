@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const maxImageBytes = 3 * 1024 * 1024;
-const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const mediaRules = new Map([
+  ["image/jpeg", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
+  ["image/png", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
+  ["image/webp", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
+  ["image/gif", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
+  ["video/mp4", { mediaType: "video", maxBytes: 15 * 1024 * 1024 }],
+  ["video/webm", { mediaType: "video", maxBytes: 15 * 1024 * 1024 }],
+  ["audio/mpeg", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
+  ["audio/mp3", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
+  ["audio/wav", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
+  ["audio/ogg", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }]
+]);
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -13,19 +23,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Keine Bilddatei hochgeladen." }, { status: 400 });
   }
 
-  if (!allowedTypes.has(file.type)) {
-    return NextResponse.json({ error: "Bitte JPG, PNG, WebP oder GIF hochladen." }, { status: 400 });
+  const rule = mediaRules.get(file.type);
+  if (!rule) {
+    return NextResponse.json({ error: "Bitte Bild, Video oder Audio in einem unterstuetzten Format hochladen." }, { status: 400 });
   }
 
-  if (file.size > maxImageBytes) {
-    return NextResponse.json({ error: "Das Bild ist zu gross. Bitte maximal 3 MB hochladen." }, { status: 400 });
+  if (file.size > rule.maxBytes) {
+    return NextResponse.json({ error: "Die Datei ist zu gross fuer den Direkt-Upload." }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const mediaUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
 
   return NextResponse.json({
-    mediaType: "image",
+    mediaType: rule.mediaType,
     mediaUrl,
     mediaAlt: file.name.replace(/\.[^.]+$/, "").replaceAll("_", " ").trim()
   });

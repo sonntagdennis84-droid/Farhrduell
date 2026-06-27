@@ -85,7 +85,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
       setUploadError(result?.error ?? "Bild konnte nicht hochgeladen werden.");
       return;
     }
-    updateQuestion(index, "mediaType", "image");
+    updateQuestion(index, "mediaType", result.mediaType);
     updateQuestion(index, "mediaUrl", result.mediaUrl);
     if (!questions[index]?.mediaAlt) updateQuestion(index, "mediaAlt", result.mediaAlt ?? "");
   }
@@ -203,7 +203,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input
                   className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-show-gold file:px-3 file:py-2 file:font-black file:text-show-navy"
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/ogg"
                   disabled={uploadingQuestion === index}
                   onChange={(event) => uploadImage(index, event.target.files?.[0])}
                 />
@@ -217,9 +217,9 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaCaption ?? ""} onChange={(event) => updateQuestion(index, "mediaCaption", event.target.value)} />
               </label>
             </div>
-            {question.mediaUrl && question.mediaType === "image" && (
-              <img className="mt-3 max-h-48 rounded border border-white/10 object-contain" src={question.mediaUrl} alt={question.mediaAlt || "Vorschau"} />
-            )}
+            {question.mediaUrl && question.mediaType === "image" && <img className="mt-3 max-h-48 rounded border border-white/10 object-contain" src={question.mediaUrl} alt={question.mediaAlt || "Vorschau"} />}
+            {question.mediaUrl && question.mediaType === "video" && <video className="mt-3 max-h-56 rounded border border-white/10 object-contain" src={question.mediaUrl} controls muted playsInline />}
+            {question.mediaUrl && question.mediaType === "audio" && <audio className="mt-3 w-full" src={question.mediaUrl} controls preload="metadata" />}
             {uploadError && <p className="mt-3 rounded border border-show-red/30 bg-show-red/10 p-3 text-sm font-bold text-show-red">{uploadError}</p>}
             <div className="mt-3 grid gap-3 md:grid-cols-4">
               <label>

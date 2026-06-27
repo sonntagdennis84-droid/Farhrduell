@@ -19,6 +19,10 @@ function QuestionMedia({ question, large = false }: { question: Question; large?
     <figure className="overflow-hidden rounded-lg border border-white/10 bg-black/25">
       {question.mediaType === "video" ? (
         <video className={`${frameClass} w-full object-contain`} src={question.mediaUrl} controls muted playsInline />
+      ) : question.mediaType === "audio" ? (
+        <div className="px-6 py-8">
+          <audio className="w-full" src={question.mediaUrl} controls preload="metadata" />
+        </div>
       ) : (
         <img className={`${frameClass} w-full object-contain`} src={question.mediaUrl} alt={question.mediaAlt || question.questionText} />
       )}
