@@ -14,6 +14,7 @@ Stand: 2026-06-27
 - Prisma-Schema fuer PostgreSQL ist vorhanden.
 - Initiale Prisma-Migration liegt unter `prisma/migrations/202606270001_initial`.
 - Admin-Seed ist ueber `scripts/seed-admin.mjs` vorbereitet.
+- Fahrschul-Quiz-Grundpaket ist ueber `scripts/seed-driving-school-quizzes.mjs` vorbereitet.
 - Login kann gegen Prisma `User` pruefen.
 - Quiz-, Session-, Teilnehmer- und Antwortdaten laufen ueber die Prisma-Repository-Schicht in `features/sessions/store.ts`.
 - Der aktuelle Frage-Startzeitpunkt fuer die Live-Punkteberechnung wird in `GameSession.currentQuestionStartedAt` gespeichert.
@@ -49,6 +50,8 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 - `docs/PRODUCTION_CHECKLIST.md`
 - `app/api/health/route.ts`
 - `scripts/seed-admin.mjs`
+- `scripts/seed-driving-school-quizzes.mjs`
+- `docs/QUIZ_SEEDING.md`
 
 ## Naechster empfohlener Arbeitsschritt
 

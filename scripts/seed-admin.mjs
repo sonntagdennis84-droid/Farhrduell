@@ -17,11 +17,16 @@ if (password.length < 12) {
   process.exit(1);
 }
 
+const existing = await prisma.user.findUnique({ where: { email } });
+if (existing) {
+  console.log(`Admin user already exists: ${existing.email}`);
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
 const passwordHash = await bcrypt.hash(password, 12);
-const user = await prisma.user.upsert({
-  where: { email },
-  update: { name, passwordHash, role: "ADMIN" },
-  create: { email, name, passwordHash, role: "ADMIN" }
+const user = await prisma.user.create({
+  data: { email, name, passwordHash, role: "ADMIN" }
 });
 
 console.log(`Admin user ready: ${user.email}`);

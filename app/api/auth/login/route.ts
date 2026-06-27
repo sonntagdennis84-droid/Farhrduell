@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
   } catch {
     if (isProduction()) {
-      return NextResponse.json({ error: "Login aktuell nicht verfuegbar" }, { status: 503 });
+      return NextResponse.json({ error: "Login aktuell nicht verfügbar. Bitte Datenbank und Admin-Seed prüfen." }, { status: 503 });
     }
   }
 
@@ -47,5 +47,5 @@ export async function POST(request: Request) {
     return response;
   }
 
-  return NextResponse.json({ error: "Ungueltige Login-Daten" }, { status: 401 });
+  return NextResponse.json({ error: "E-Mail oder Passwort ist nicht korrekt." }, { status: 401 });
 }

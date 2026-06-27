@@ -8,7 +8,21 @@ import { ParticipantList } from "@/components/quiz/ParticipantList";
 import { QRCodePanel } from "@/components/quiz/QRCodePanel";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 
-export function LobbyClient({ initialSession, initialParticipants, qrCode, joinUrl }: { initialSession: GameSession; initialParticipants: Participant[]; qrCode: string; joinUrl: string }) {
+export function LobbyClient({
+  initialSession,
+  initialParticipants,
+  qrCode,
+  joinUrl,
+  remoteQrCode,
+  remoteUrl
+}: {
+  initialSession: GameSession;
+  initialParticipants: Participant[];
+  qrCode: string;
+  joinUrl: string;
+  remoteQrCode: string;
+  remoteUrl: string;
+}) {
   const [participants, setParticipants] = useState(initialParticipants);
 
   useEffect(() => {
@@ -43,6 +57,19 @@ export function LobbyClient({ initialSession, initialParticipants, qrCode, joinU
           <PrimaryButton className="w-full" onClick={startQuiz} disabled={participants.length === 0}>
             Quiz starten
           </PrimaryButton>
+        </div>
+        <div className="mt-6 rounded-lg border border-show-gold/30 bg-show-gold/10 p-4">
+          <div className="grid items-center gap-4 sm:grid-cols-[8rem_1fr]">
+            <img className="mx-auto h-32 w-32 rounded border-2 border-white bg-white p-2" src={remoteQrCode} alt="QR-Code fuer Moderator-Fernbedienung" />
+            <div>
+              <h2 className="text-xl font-black text-show-gold">Moderator-App</h2>
+              <p className="mt-1 text-sm font-semibold text-white/70">Mit Android scannen, einloggen und diese Session vom Handy steuern.</p>
+              <Link className="mt-3 inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-4 py-2.5 font-bold hover:border-show-gold hover:text-show-gold" href={`/host/${initialSession.id}/remote`} target="_blank">
+                Fernbedienung oeffnen
+              </Link>
+              <p className="mt-2 break-all text-xs text-white/50">{remoteUrl}</p>
+            </div>
+          </div>
         </div>
       </div>
       <div className="rounded-lg border border-white/10 bg-show-panel/90 p-6">

@@ -1,6 +1,16 @@
 export type Role = "ADMIN" | "INSTRUCTOR";
 export type AnswerOption = "A" | "B" | "C" | "D";
-export type SessionStatus = "LOBBY" | "RUNNING" | "QUESTION_ACTIVE" | "QUESTION_FINISHED" | "FINISHED";
+export type SessionStatus =
+  | "LOBBY"
+  | "RUNNING"
+  | "QUESTION_ACTIVE"
+  | "ANSWER_LOCKED"
+  | "ANSWER_REVEALED"
+  | "EXPLANATION_VISIBLE"
+  | "LEADERBOARD_VISIBLE"
+  | "QUESTION_FINISHED"
+  | "FINISHED";
+export type MediaType = "none" | "image" | "video";
 
 export type Question = {
   id: string;
@@ -14,6 +24,21 @@ export type Question = {
   correctAnswer: AnswerOption;
   timeLimitSeconds: number;
   explanation?: string | null;
+  answerAExplanation?: string | null;
+  answerBExplanation?: string | null;
+  answerCExplanation?: string | null;
+  answerDExplanation?: string | null;
+  memorySentence?: string | null;
+  memoryQuestion?: string | null;
+  practicalExample?: string | null;
+  hint?: string | null;
+  mediaType?: MediaType | string | null;
+  mediaUrl?: string | null;
+  mediaAlt?: string | null;
+  mediaCaption?: string | null;
+  difficulty?: string | null;
+  category?: string | null;
+  topic?: string | null;
   imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +61,9 @@ export type GameSession = {
   status: SessionStatus;
   currentQuestionIndex: number;
   currentQuestionStartedAt?: string | null;
+  enableJokers?: boolean;
+  jokerLimitPerParticipant?: number;
+  isTimerPaused?: boolean;
   startedAt?: string | null;
   finishedAt?: string | null;
   createdAt: string;

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Answer, AnswerOption, GameSession, Participant, Question, Quiz } from "@/types/domain";
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
+import { canSubmitAnswer } from "@/lib/session-state";
 
 type QuizInput = Partial<Quiz> & {
   title: string;
@@ -13,7 +14,7 @@ const demoUserId = "demo-instructor";
 
 async function getPrisma() {
   const { prisma } = await import("@/lib/prisma");
-  return prisma;
+  return prisma as any;
 }
 
 function iso(value: Date | string | null | undefined) {
@@ -105,7 +106,10 @@ async function ensureDemoQuiz() {
             answerD: "Beginn einer Umweltzone",
             correctAnswer: "B",
             timeLimitSeconds: 20,
-            explanation: "Dreieckige Zeichen mit rotem Rand sind Gefahrzeichen."
+            explanation: "Dreieckige Zeichen mit rotem Rand sind Gefahrzeichen.",
+            memorySentence: "Dreieck mit rotem Rand bedeutet: Achtung, Gefahr.",
+            practicalExample: "Reduziere die Geschwindigkeit und rechne mit einer konkreten Gefahrstelle.",
+            mediaType: "none"
           },
           {
             id: "demo-question-1",
@@ -117,7 +121,10 @@ async function ensureDemoQuiz() {
             answerD: "Nur der Bremsweg zaehlt",
             correctAnswer: "A",
             timeLimitSeconds: 20,
-            explanation: "Als Faustregel gilt: halber Tachowert in Metern."
+            explanation: "Als Faustregel gilt: halber Tachowert in Metern.",
+            memorySentence: "Halber Tacho in Metern ist der Mindestabstand bei guten Bedingungen.",
+            practicalExample: "Bei 50 km/h haeltst du mindestens etwa 25 Meter Abstand.",
+            mediaType: "none"
           }
         ]
       }
@@ -173,6 +180,21 @@ export async function upsertQuiz(input: QuizInput) {
         correctAnswer: question.correctAnswer,
         timeLimitSeconds: Number(question.timeLimitSeconds ?? 20),
         explanation: question.explanation ?? "",
+        answerAExplanation: question.answerAExplanation ?? null,
+        answerBExplanation: question.answerBExplanation ?? null,
+        answerCExplanation: question.answerCExplanation ?? null,
+        answerDExplanation: question.answerDExplanation ?? null,
+        memorySentence: question.memorySentence ?? null,
+        memoryQuestion: question.memoryQuestion ?? null,
+        practicalExample: question.practicalExample ?? null,
+        hint: question.hint ?? null,
+        mediaType: question.mediaType ?? "none",
+        mediaUrl: question.mediaUrl ?? null,
+        mediaAlt: question.mediaAlt ?? null,
+        mediaCaption: question.mediaCaption ?? null,
+        difficulty: question.difficulty ?? null,
+        category: question.category ?? null,
+        topic: question.topic ?? null,
         imageUrl: question.imageUrl ?? null
       }))
     });
@@ -276,7 +298,34 @@ export async function revealQuestion(sessionId: string) {
   const prisma = await getPrisma();
   await prisma.gameSession.update({
     where: { id: sessionId },
-    data: { status: "QUESTION_FINISHED" }
+    data: { status: "ANSWER_REVEALED" }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function lockAnswers(sessionId: string) {
+  const prisma = await getPrisma();
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: { status: "ANSWER_LOCKED" }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function showExplanation(sessionId: string) {
+  const prisma = await getPrisma();
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: { status: "EXPLANATION_VISIBLE" }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function showLeaderboard(sessionId: string) {
+  const prisma = await getPrisma();
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: { status: "LEADERBOARD_VISIBLE" }
   });
   return getSessionBundle(sessionId);
 }
@@ -316,7 +365,7 @@ export async function submitAnswer(participantId: string, selectedAnswer: Answer
   if (!participant) return { ok: false as const, reason: "Teilnehmer nicht gefunden" };
   const bundle = await getSessionBundle(participant.sessionId);
   if (!bundle) return { ok: false as const, reason: "Session nicht gefunden" };
-  if (bundle.session.status !== "QUESTION_ACTIVE") return { ok: false as const, reason: "Antwortphase ist geschlossen" };
+  if (!canSubmitAnswer(bundle.session.status)) return { ok: false as const, reason: "Antwortphase ist geschlossen" };
   const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
   if (!question) return { ok: false as const, reason: "Frage nicht gefunden" };
 

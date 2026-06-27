@@ -16,6 +16,10 @@ enum SessionStatus {
   LOBBY
   RUNNING
   QUESTION_ACTIVE
+  ANSWER_LOCKED
+  ANSWER_REVEALED
+  EXPLANATION_VISIBLE
+  LEADERBOARD_VISIBLE
   QUESTION_FINISHED
   FINISHED
 }
@@ -63,6 +67,21 @@ model Question {
   correctAnswer    AnswerOption
   timeLimitSeconds Int          @default(20)
   explanation      String?
+  answerAExplanation String?
+  answerBExplanation String?
+  answerCExplanation String?
+  answerDExplanation String?
+  memorySentence   String?
+  memoryQuestion   String?
+  practicalExample String?
+  hint             String?
+  mediaType        String       @default("none")
+  mediaUrl         String?
+  mediaAlt         String?
+  mediaCaption     String?
+  difficulty       String?
+  category         String?
+  topic            String?
   imageUrl         String?
   answers          Answer[]
   createdAt        DateTime     @default(now())
@@ -77,8 +96,13 @@ model GameSession {
   status               SessionStatus @default(LOBBY)
   currentQuestionIndex Int           @default(0)
   currentQuestionStartedAt DateTime?
+  enableJokers         Boolean       @default(false)
+  jokerLimitPerParticipant Int       @default(1)
+  isTimerPaused        Boolean       @default(false)
   participants         Participant[]
   answers              Answer[]
+  teams                Team[]
+  jokerUsages          JokerUsage[]
   startedAt            DateTime?
   finishedAt           DateTime?
   createdAt            DateTime      @default(now())
@@ -88,11 +112,26 @@ model Participant {
   id          String      @id @default(cuid())
   sessionId   String
   session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
   displayName String
   totalPoints Int         @default(0)
   joinedAt    DateTime    @default(now())
   lastSeenAt  DateTime?
   answers     Answer[]
+  jokerUsages JokerUsage[]
+}
+
+model Team {
+  id           String        @id @default(cuid())
+  sessionId    String
+  session      GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name         String
+  color        String?
+  totalPoints  Int           @default(0)
+  createdAt    DateTime      @default(now())
+  participants Participant[]
+  jokerUsages  JokerUsage[]
 }
 
 model Answer {
@@ -110,4 +149,17 @@ model Answer {
   submittedAt    DateTime     @default(now())
 
   @@unique([participantId, questionId])
+}
+
+model JokerUsage {
+  id            String      @id @default(cuid())
+  sessionId     String
+  session       GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantId String?
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  teamId        String?
+  team          Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  questionId    String
+  jokerType     String
+  usedAt        DateTime    @default(now())
 }

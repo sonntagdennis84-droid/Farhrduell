@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AnswerOption, Quiz } from "@/types/domain";
+import type { AnswerOption, MediaType, Quiz } from "@/types/domain";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 
 type QuestionDraft = {
@@ -16,6 +16,21 @@ type QuestionDraft = {
   correctAnswer: AnswerOption;
   timeLimitSeconds: number;
   explanation?: string | null;
+  answerAExplanation?: string | null;
+  answerBExplanation?: string | null;
+  answerCExplanation?: string | null;
+  answerDExplanation?: string | null;
+  memorySentence?: string | null;
+  memoryQuestion?: string | null;
+  practicalExample?: string | null;
+  hint?: string | null;
+  mediaType?: MediaType | string | null;
+  mediaUrl?: string | null;
+  mediaAlt?: string | null;
+  mediaCaption?: string | null;
+  difficulty?: string | null;
+  category?: string | null;
+  topic?: string | null;
 };
 
 const emptyQuestion: QuestionDraft = {
@@ -24,9 +39,24 @@ const emptyQuestion: QuestionDraft = {
   answerB: "",
   answerC: "",
   answerD: "",
-  correctAnswer: "A" as AnswerOption,
+  correctAnswer: "A",
   timeLimitSeconds: 20,
-  explanation: ""
+  explanation: "",
+  answerAExplanation: "",
+  answerBExplanation: "",
+  answerCExplanation: "",
+  answerDExplanation: "",
+  memorySentence: "",
+  memoryQuestion: "",
+  practicalExample: "",
+  hint: "",
+  mediaType: "none",
+  mediaUrl: "",
+  mediaAlt: "",
+  mediaCaption: "",
+  difficulty: "leicht",
+  category: "Grundstoff",
+  topic: ""
 };
 
 export function QuizEditor({ quiz }: { quiz?: Quiz }) {
@@ -74,7 +104,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
               <h2 className="text-xl font-black text-show-gold">Frage {index + 1}</h2>
               {questions.length > 1 && (
                 <button type="button" className="rounded border border-white/20 px-3 py-2 text-sm font-bold" onClick={() => setQuestions((items) => items.filter((_, itemIndex) => itemIndex !== index))}>
-                  Löschen
+                  Loeschen
                 </button>
               )}
             </div>
@@ -105,8 +135,78 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input type="number" min="5" max="120" className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.timeLimitSeconds} onChange={(event) => updateQuestion(index, "timeLimitSeconds", Number(event.target.value))} />
               </label>
               <label>
-                <span className="text-sm font-bold text-white/70">Erklärung</span>
+                <span className="text-sm font-bold text-white/70">Allgemeine Erklaerung</span>
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.explanation ?? ""} onChange={(event) => updateQuestion(index, "explanation", event.target.value)} />
+              </label>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {(["A", "B", "C", "D"] as AnswerOption[]).map((option) => (
+                <label key={option}>
+                  <span className="text-sm font-bold text-white/70">Erklaerung Antwort {option}</span>
+                  <input
+                    className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3"
+                    value={(question[`answer${option}Explanation` as keyof typeof question] as string) ?? ""}
+                    onChange={(event) => updateQuestion(index, `answer${option}Explanation`, event.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <label>
+                <span className="text-sm font-bold text-white/70">Merksatz</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.memorySentence ?? ""} onChange={(event) => updateQuestion(index, "memorySentence", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Praxisbeispiel</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.practicalExample ?? ""} onChange={(event) => updateQuestion(index, "practicalExample", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Tipp-Joker</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.hint ?? ""} onChange={(event) => updateQuestion(index, "hint", event.target.value)} />
+              </label>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-4">
+              <label>
+                <span className="text-sm font-bold text-white/70">Medientyp</span>
+                <select className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaType ?? "none"} onChange={(event) => updateQuestion(index, "mediaType", event.target.value)}>
+                  <option value="none">kein Medium</option>
+                  <option value="image">Bild</option>
+                  <option value="video">Video</option>
+                </select>
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Medien-URL</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" placeholder="/uploads/questions/bild.jpg" value={question.mediaUrl ?? ""} onChange={(event) => updateQuestion(index, "mediaUrl", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Alt-Text</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaAlt ?? ""} onChange={(event) => updateQuestion(index, "mediaAlt", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Medientitel</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaCaption ?? ""} onChange={(event) => updateQuestion(index, "mediaCaption", event.target.value)} />
+              </label>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-4">
+              <label>
+                <span className="text-sm font-bold text-white/70">Erinnerungsfrage</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.memoryQuestion ?? ""} onChange={(event) => updateQuestion(index, "memoryQuestion", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Schwierigkeit</span>
+                <select className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.difficulty ?? "leicht"} onChange={(event) => updateQuestion(index, "difficulty", event.target.value)}>
+                  <option value="leicht">leicht</option>
+                  <option value="mittel">mittel</option>
+                  <option value="schwer">schwer</option>
+                </select>
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Kategorie</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.category ?? ""} onChange={(event) => updateQuestion(index, "category", event.target.value)} />
+              </label>
+              <label>
+                <span className="text-sm font-bold text-white/70">Thema</span>
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.topic ?? ""} onChange={(event) => updateQuestion(index, "topic", event.target.value)} />
               </label>
             </div>
           </section>
@@ -114,7 +214,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
       </div>
       <div className="flex flex-wrap gap-3">
         <button type="button" className="rounded border border-white/20 px-5 py-3 font-bold" onClick={() => setQuestions((items) => [...items, emptyQuestion])}>
-          Frage hinzufügen
+          Frage hinzufuegen
         </button>
         <PrimaryButton disabled={saving}>{saving ? "Speichert..." : "Quiz speichern"}</PrimaryButton>
       </div>

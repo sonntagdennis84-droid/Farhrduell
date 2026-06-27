@@ -11,12 +11,14 @@ export default async function LobbyPage({ params }: { params: Promise<{ sessionI
   if (!bundle) notFound();
   const baseUrl = await getJoinBaseUrl();
   const joinUrl = `${baseUrl}/join/${bundle.session.joinCode}`;
+  const remoteUrl = `${baseUrl}/host/${bundle.session.id}/remote`;
   const qrCode = await createJoinQrCode(joinUrl);
+  const remoteQrCode = await createJoinQrCode(remoteUrl);
 
   return (
     <AppShell>
       <h1 className="mb-6 text-4xl font-black">Lobby</h1>
-      <LobbyClient initialSession={bundle.session} initialParticipants={bundle.participants} qrCode={qrCode} joinUrl={joinUrl} />
+      <LobbyClient initialSession={bundle.session} initialParticipants={bundle.participants} qrCode={qrCode} joinUrl={joinUrl} remoteQrCode={remoteQrCode} remoteUrl={remoteUrl} />
     </AppShell>
   );
 }

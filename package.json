@@ -10,6 +10,8 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node scripts/seed-admin.mjs",
+    "db:seed:quizzes": "node scripts/seed-driving-school-quizzes.mjs",
+    "smoke:mvp": "node scripts/smoke-mvp.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

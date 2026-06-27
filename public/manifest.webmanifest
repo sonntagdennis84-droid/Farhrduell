@@ -1,0 +1,24 @@
+{
+  "name": "Fahrduell Moderator",
+  "short_name": "Fahrduell",
+  "description": "Moderator-Fernbedienung fuer Fahrduell Live-Quizze",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#08182E",
+  "theme_color": "#08182E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/fahrduell.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/fahrduell.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

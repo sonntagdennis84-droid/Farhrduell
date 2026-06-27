@@ -1,0 +1,81 @@
+ALTER TYPE "SessionStatus" ADD VALUE IF NOT EXISTS 'ANSWER_LOCKED';
+ALTER TYPE "SessionStatus" ADD VALUE IF NOT EXISTS 'ANSWER_REVEALED';
+ALTER TYPE "SessionStatus" ADD VALUE IF NOT EXISTS 'EXPLANATION_VISIBLE';
+ALTER TYPE "SessionStatus" ADD VALUE IF NOT EXISTS 'LEADERBOARD_VISIBLE';
+
+ALTER TABLE "Question"
+  ADD COLUMN IF NOT EXISTS "answerAExplanation" TEXT,
+  ADD COLUMN IF NOT EXISTS "answerBExplanation" TEXT,
+  ADD COLUMN IF NOT EXISTS "answerCExplanation" TEXT,
+  ADD COLUMN IF NOT EXISTS "answerDExplanation" TEXT,
+  ADD COLUMN IF NOT EXISTS "memorySentence" TEXT,
+  ADD COLUMN IF NOT EXISTS "practicalExample" TEXT,
+  ADD COLUMN IF NOT EXISTS "hint" TEXT,
+  ADD COLUMN IF NOT EXISTS "mediaType" TEXT NOT NULL DEFAULT 'none',
+  ADD COLUMN IF NOT EXISTS "mediaUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "mediaAlt" TEXT,
+  ADD COLUMN IF NOT EXISTS "mediaCaption" TEXT;
+
+ALTER TABLE "GameSession"
+  ADD COLUMN IF NOT EXISTS "enableJokers" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "jokerLimitPerParticipant" INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS "isTimerPaused" BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS "Team" (
+  "id" TEXT NOT NULL,
+  "sessionId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "color" TEXT,
+  "totalPoints" INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "Team_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "Team"
+  DROP CONSTRAINT IF EXISTS "Team_sessionId_fkey";
+
+ALTER TABLE "Team"
+  ADD CONSTRAINT "Team_sessionId_fkey"
+  FOREIGN KEY ("sessionId") REFERENCES "GameSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "Participant"
+  ADD COLUMN IF NOT EXISTS "teamId" TEXT;
+
+ALTER TABLE "Participant"
+  DROP CONSTRAINT IF EXISTS "Participant_teamId_fkey";
+
+ALTER TABLE "Participant"
+  ADD CONSTRAINT "Participant_teamId_fkey"
+  FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE TABLE IF NOT EXISTS "JokerUsage" (
+  "id" TEXT NOT NULL,
+  "sessionId" TEXT NOT NULL,
+  "participantId" TEXT,
+  "teamId" TEXT,
+  "questionId" TEXT NOT NULL,
+  "jokerType" TEXT NOT NULL,
+  "usedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "JokerUsage_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "JokerUsage"
+  DROP CONSTRAINT IF EXISTS "JokerUsage_sessionId_fkey";
+
+ALTER TABLE "JokerUsage"
+  ADD CONSTRAINT "JokerUsage_sessionId_fkey"
+  FOREIGN KEY ("sessionId") REFERENCES "GameSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "JokerUsage"
+  DROP CONSTRAINT IF EXISTS "JokerUsage_participantId_fkey";
+
+ALTER TABLE "JokerUsage"
+  ADD CONSTRAINT "JokerUsage_participantId_fkey"
+  FOREIGN KEY ("participantId") REFERENCES "Participant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "JokerUsage"
+  DROP CONSTRAINT IF EXISTS "JokerUsage_teamId_fkey";
+
+ALTER TABLE "JokerUsage"
+  ADD CONSTRAINT "JokerUsage_teamId_fkey"
+  FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -17,8 +17,10 @@
 - [ ] Container-Image wurde gebaut.
 - [ ] `pnpm db:migrate` oder `prisma migrate deploy` wurde ausgefuehrt.
 - [ ] Admin-User wurde mit `pnpm db:seed` angelegt.
+- [ ] Quiz-Grundpaket wurde mit `pnpm db:seed:quizzes` angelegt.
 - [ ] `/api/health` antwortet mit `ok: true`.
 - [ ] `/login` ist ueber HTTPS erreichbar.
+- [ ] `pnpm smoke:mvp` laeuft gegen die oeffentliche URL.
 
 ## Funktionstest
 
@@ -34,6 +36,17 @@
 - [ ] Antwort kann pro Teilnehmer nur einmal gespeichert werden.
 - [ ] Rangliste aktualisiert sich.
 - [ ] Endergebnis und CSV-Export funktionieren.
+
+## Automatisierter Smoke-Test
+
+```bash
+SMOKE_BASE_URL=https://fahrduell-production.up.railway.app \
+SMOKE_ADMIN_EMAIL=admin@fahrduell.de \
+SMOKE_ADMIN_PASSWORD='...' \
+pnpm smoke:mvp
+```
+
+Ohne Admin-Zugang prueft der Smoke-Test nur Healthcheck, Auth-Konfiguration und Schutz der Moderatorseiten.
 
 ## Sicherheit
 

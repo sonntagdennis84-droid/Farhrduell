@@ -2,38 +2,94 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, Participant, Quiz } from "@/types/domain";
+import type { GameSession, LeaderboardRow, Participant, Question, Quiz } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Leaderboard } from "@/components/quiz/Leaderboard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
+import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
-export function HostClient({ initialBundle }: { initialBundle: { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] } }) {
+type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
+
+function QuestionMedia({ question, large = false }: { question: Question; large?: boolean }) {
+  if (!question.mediaUrl || question.mediaType === "none") return null;
+  const frameClass = large ? "mt-6 max-h-[46vh]" : "mt-4 max-h-72";
+
+  return (
+    <figure className="overflow-hidden rounded-lg border border-white/10 bg-black/25">
+      {question.mediaType === "video" ? (
+        <video className={`${frameClass} w-full object-contain`} src={question.mediaUrl} controls muted playsInline />
+      ) : (
+        <img className={`${frameClass} w-full object-contain`} src={question.mediaUrl} alt={question.mediaAlt || question.questionText} />
+      )}
+      {question.mediaCaption && <figcaption className="border-t border-white/10 px-4 py-2 text-sm font-semibold text-white/70">{question.mediaCaption}</figcaption>}
+    </figure>
+  );
+}
+
+function ExplanationPanel({ question }: { question: Question }) {
+  const answerExplanations = [
+    ["A", question.answerAExplanation],
+    ["B", question.answerBExplanation],
+    ["C", question.answerCExplanation],
+    ["D", question.answerDExplanation]
+  ].filter(([, text]) => Boolean(text));
+
+  return (
+    <div className="mt-5 space-y-4 rounded-lg border border-show-gold/40 bg-show-gold/10 p-5 text-white/90">
+      <div>
+        <p className="text-sm font-black uppercase text-show-gold">Erklaerung</p>
+        <p className="mt-1 text-2xl font-black">Richtig ist Antwort {question.correctAnswer}</p>
+      </div>
+      {question.explanation && <p className="text-lg leading-relaxed">{question.explanation}</p>}
+      {answerExplanations.length > 0 && (
+        <div className="grid gap-2 md:grid-cols-2">
+          {answerExplanations.map(([option, text]) => (
+            <div key={option} className="rounded border border-white/10 bg-black/20 p-3">
+              <p className="font-black text-show-gold">Antwort {option}</p>
+              <p className="mt-1 text-sm leading-relaxed text-white/80">{text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {question.memorySentence && <p className="rounded border border-show-gold/30 bg-black/20 p-3 font-black text-show-gold">{question.memorySentence}</p>}
+      {question.practicalExample && <p className="leading-relaxed text-white/80">Praxis: {question.practicalExample}</p>}
+      {question.memoryQuestion && <p className="font-bold text-white">Merken: {question.memoryQuestion}</p>}
+    </div>
+  );
+}
+
+export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [session, setSession] = useState(initialBundle.session);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [showScoreboard, setShowScoreboard] = useState(false);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
   const active = session.status === "QUESTION_ACTIVE";
-  const revealed = session.status === "QUESTION_FINISHED";
+  const locked = session.status === "ANSWER_LOCKED";
+  const revealed = isAnswerRevealed(session.status);
+  const explanationVisible = isExplanationVisible(session.status);
+  const scoreboardVisible = isLeaderboardVisible(session.status);
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
   useEffect(() => {
     const socket = io();
     socket.emit("host:join", { sessionId: session.id });
-    socket.on("question_started", (bundle) => {
+    socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
-      setShowScoreboard(false);
       setSecondsLeft(bundle.quiz.questions[bundle.session.currentQuestionIndex].timeLimitSeconds);
     });
-    socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
-    socket.on("question_revealed", (bundle) => {
+    socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
     });
-    socket.on("quiz_finished", (bundle) => {
+    socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
+    socket.on("question_revealed", (bundle: Bundle) => {
+      setSession(bundle.session);
+      setLeaderboard(bundle.leaderboard);
+    });
+    socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
       location.href = `/results/${session.id}`;
@@ -50,7 +106,7 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
       setSecondsLeft((value) => {
         if (value <= 1) {
           window.clearInterval(interval);
-          fetch(`/api/sessions/${session.id}/reveal`, { method: "POST" });
+          fetch(`/api/sessions/${session.id}/lock`, { method: "POST" });
           return 0;
         }
         return value - 1;
@@ -60,6 +116,7 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
   }, [active, question, session.id]);
 
   async function action(path: string) {
+    if (path === "finish" && !window.confirm("Quiz wirklich beenden?")) return;
     const response = await fetch(`/api/sessions/${session.id}/${path}`, { method: "POST" });
     const bundle = await response.json();
     if (path === "next" && bundle.session.status === "FINISHED") {
@@ -68,14 +125,13 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
     }
     setSession(bundle.session);
     setLeaderboard(bundle.leaderboard);
-    if (path === "next" || path === "start") setShowScoreboard(false);
   }
 
   if (!question) {
     return <PrimaryButton onClick={() => (location.href = `/results/${session.id}`)}>Zum Ergebnis</PrimaryButton>;
   }
 
-  if (showScoreboard) {
+  if (scoreboardVisible) {
     const topThree = leaderboard.slice(0, 3);
     return (
       <div className="space-y-6">
@@ -89,10 +145,12 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => setShowScoreboard(false)}>
-                Zur Frage
+              <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("reveal")}>
+                Zur Aufloesung
               </button>
-              <PrimaryButton onClick={() => action("next")}>Nächste Frage</PrimaryButton>
+              <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>
+                Naechste Frage vorbereiten
+              </button>
             </div>
           </div>
         </section>
@@ -122,11 +180,19 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
       <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-sm font-black uppercase text-show-gold">Frage {session.currentQuestionIndex + 1}</div>
+            <div className="text-sm font-black uppercase text-show-gold">
+              Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
+            </div>
             <h1 className="mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
+            <p className="mt-3 inline-flex rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">
+              {active ? "Antwortphase laeuft" : locked ? "Antworten gesperrt" : revealed ? "Aufloesung" : "Bereit"}
+            </p>
           </div>
           <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />
         </div>
+
+        <QuestionMedia question={question} large />
+
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {answerTexts &&
             (["A", "B", "C", "D"] as const).map((option) => (
@@ -135,20 +201,21 @@ export function HostClient({ initialBundle }: { initialBundle: { session: GameSe
               </div>
             ))}
         </div>
-        {revealed && question.explanation && <p className="mt-5 rounded border border-show-gold/40 bg-show-gold/10 p-4 text-white/85">{question.explanation}</p>}
+
+        {explanationVisible && <ExplanationPanel question={question} />}
+
         <div className="mt-6 flex flex-wrap gap-3">
-          {!active && !revealed && <PrimaryButton onClick={() => action("start")}>Frage starten</PrimaryButton>}
-          {active && <PrimaryButton onClick={() => action("reveal")}>Auflösen</PrimaryButton>}
-          {revealed && (
-            <>
-              <PrimaryButton onClick={() => setShowScoreboard(true)}>Punktestand einblenden</PrimaryButton>
-              <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>
-                Nächste Frage
-              </button>
-            </>
-          )}
+          <a className="inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" href={`/host/${session.id}/remote`} target="_blank">
+            Handy-Fernbedienung
+          </a>
+          {!active && !locked && !revealed && <PrimaryButton onClick={() => action("start")}>Frage starten</PrimaryButton>}
+          {active && <PrimaryButton onClick={() => action("lock")}>Antworten sperren</PrimaryButton>}
+          {locked && <PrimaryButton onClick={() => action("reveal")}>Antwort aufloesen</PrimaryButton>}
+          {revealed && !explanationVisible && <PrimaryButton onClick={() => action("explanation")}>Erklaerung anzeigen</PrimaryButton>}
+          {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("leaderboard")}>Punktestand einblenden</button>}
+          {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Naechste Frage vorbereiten</button>}
           <button className="rounded border border-white/20 px-5 py-3 font-bold" onClick={() => action("finish")}>
-            Beenden
+            Quiz beenden
           </button>
         </div>
       </section>

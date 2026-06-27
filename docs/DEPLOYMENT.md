@@ -88,6 +88,14 @@ pnpm db:seed
 
 Das Passwort muss mindestens 12 Zeichen lang sein.
 
+## Quiz-Grundpaket anlegen
+
+```bash
+pnpm db:seed:quizzes
+```
+
+Das Skript erstellt 14 vorbereitete Fahrschul-Quizze und ist idempotent. Details stehen in `docs/QUIZ_SEEDING.md`.
+
 ## Online-Testablauf
 
 1. PostgreSQL-Datenbank anlegen.
@@ -103,6 +111,15 @@ Das Passwort muss mindestens 12 Zeichen lang sein.
 11. Mit mehreren Smartphones Frage, Antwort, Rangliste und Endergebnis testen.
 12. Server neu starten und pruefen, ob persistente Daten erhalten bleiben.
 
+Automatisierter Smoke-Test:
+
+```bash
+SMOKE_BASE_URL=https://fahrduell-production.up.railway.app \
+SMOKE_ADMIN_EMAIL=admin@fahrduell.de \
+SMOKE_ADMIN_PASSWORD='...' \
+pnpm smoke:mvp
+```
+
 ## Socket.IO und Skalierung
 
 Fuer MVP-Produktion ist eine einzelne Node-Instanz empfohlen. Bei mehreren Instanzen werden Sticky Sessions und ein Socket.IO-Adapter benoetigt, typischerweise Redis. `REDIS_URL` ist bereits als Environment-Variable vorgesehen; die Adapter-Integration sollte erst aktiviert werden, wenn horizontal skaliert wird.
@@ -117,6 +134,6 @@ Fuer MVP-Produktion ist eine einzelne Node-Instanz empfohlen. Bei mehreren Insta
 
 ## Hosting-Hinweise
 
-- Railway/Render/Fly.io: geeignet fuer schnellen MVP-Online-Test mit dauerhaftem Node-Prozess.
+- Railway/Render/Fly.io: geeignet fuer schnellen MVP-Online-Test mit dauerhaftem Node-Prozess. Aktuelle Sprint-1-URL: `https://fahrduell-production.up.railway.app`.
 - VPS/Hetzner plus Docker: langfristig robust, benoetigt Reverse Proxy, HTTPS und Backups.
 - Vercel: wegen Socket.IO/WebSocket-Kompatibilitaet gesondert testen; fuer die erste stabile Version ist Docker/Node konservativer.

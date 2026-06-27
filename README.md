@@ -29,6 +29,7 @@ Das produktionsnahe Setup ist fuer Docker, PostgreSQL und Socket.IO vorbereitet:
 - [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
 - [Repository Audit](docs/REPOSITORY_AUDIT.md)
 - [Online stellen](docs/GO_ONLINE.md)
+- [Quiz-Seeding](docs/QUIZ_SEEDING.md)
 - Healthcheck: `/api/health`
 - Docker Compose: `docker compose up --build`
 
