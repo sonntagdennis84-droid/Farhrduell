@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { InstallAppButton } from "@/components/InstallAppButton";
 import { StartScreenMusic } from "@/components/StartScreenMusic";
 import { Logo } from "@/components/ui/Logo";
 
@@ -22,7 +21,6 @@ export default function Home() {
             </Link>
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
-            <InstallAppButton />
             <StartScreenMusic />
           </div>
           <p className="mt-4 max-w-2xl text-sm font-semibold text-white/58">

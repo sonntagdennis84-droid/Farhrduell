@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fahrduell Moderator</string>
+    <string name="title_activity_main">Fahrduell Moderator</string>
+    <string name="package_name">app.fahrduell.moderator</string>
+    <string name="custom_url_scheme">app.fahrduell.moderator</string>
+</resources>

@@ -5,3 +5,8 @@ node_modules
 .env.production
 .DS_Store
 work/
+outputs/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
