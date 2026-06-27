@@ -4,7 +4,7 @@ import { verifyAuthToken } from "@/lib/auth-token";
 const AUTH_COOKIE = "fahrduell_user";
 
 const protectedPagePrefixes = ["/dashboard", "/quizzes", "/sessions", "/host"];
-const protectedApiPrefixes = ["/api/quizzes", "/api/sessions"];
+const protectedApiPrefixes = ["/api/quizzes", "/api/sessions", "/api/uploads"];
 
 function isProtected(pathname: string) {
   return (
@@ -31,5 +31,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/quizzes/:path*", "/sessions/:path*", "/host/:path*", "/api/quizzes/:path*", "/api/sessions/:path*"]
+  matcher: ["/dashboard/:path*", "/quizzes/:path*", "/sessions/:path*", "/host/:path*", "/api/quizzes/:path*", "/api/sessions/:path*", "/api/uploads/:path*"]
 };

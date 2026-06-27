@@ -23,6 +23,12 @@ function QuestionMedia({ question }: { question: Question }) {
   );
 }
 
+function remainingSeconds(session: GameSession, question: Question) {
+  const startedAt = session.currentQuestionStartedAt ? new Date(session.currentQuestionStartedAt).getTime() : Date.now();
+  const elapsedMs = Math.max(Date.now() - startedAt, 0);
+  return Math.max(Math.ceil(question.timeLimitSeconds - elapsedMs / 1000), 0);
+}
+
 export function PlayClient({ participant, session, quiz }: { participant: Participant; session: GameSession; quiz: Quiz }) {
   const [currentSession, setCurrentSession] = useState(session);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -52,7 +58,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
       setCurrentSession(bundle.session);
       setSelected(null);
       setMessage("");
-      setSecondsLeft(bundle.quiz.questions[bundle.session.currentQuestionIndex].timeLimitSeconds);
+      setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("session_updated", (bundle) => {
       setCurrentSession(bundle.session);
@@ -78,10 +84,10 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
 
   useEffect(() => {
     if (!active || !question) return;
-    setSecondsLeft(question.timeLimitSeconds);
-    const interval = window.setInterval(() => setSecondsLeft((value) => Math.max(value - 1, 0)), 1000);
+    setSecondsLeft(remainingSeconds(currentSession, question));
+    const interval = window.setInterval(() => setSecondsLeft(remainingSeconds(currentSession, question)), 250);
     return () => window.clearInterval(interval);
-  }, [active, question]);
+  }, [active, currentSession, question]);
 
   async function answer(option: AnswerOption) {
     if (selected || !active) return;

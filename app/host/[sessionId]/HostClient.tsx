@@ -59,6 +59,12 @@ function ExplanationPanel({ question }: { question: Question }) {
   );
 }
 
+function remainingSeconds(session: GameSession, question: Question) {
+  const startedAt = session.currentQuestionStartedAt ? new Date(session.currentQuestionStartedAt).getTime() : Date.now();
+  const elapsedMs = Math.max(Date.now() - startedAt, 0);
+  return Math.max(Math.ceil(question.timeLimitSeconds - elapsedMs / 1000), 0);
+}
+
 export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [session, setSession] = useState(initialBundle.session);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
@@ -78,7 +84,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
-      setSecondsLeft(bundle.quiz.questions[bundle.session.currentQuestionIndex].timeLimitSeconds);
+      setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
@@ -101,19 +107,17 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
 
   useEffect(() => {
     if (!active || !question) return;
-    setSecondsLeft(question.timeLimitSeconds);
+    setSecondsLeft(remainingSeconds(session, question));
     const interval = window.setInterval(() => {
-      setSecondsLeft((value) => {
-        if (value <= 1) {
+      const nextValue = remainingSeconds(session, question);
+      setSecondsLeft(nextValue);
+      if (nextValue <= 0) {
           window.clearInterval(interval);
           fetch(`/api/sessions/${session.id}/lock`, { method: "POST" });
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
+      }
+    }, 250);
     return () => window.clearInterval(interval);
-  }, [active, question, session.id]);
+  }, [active, question, session]);
 
   async function action(path: string) {
     if (path === "finish" && !window.confirm("Quiz wirklich beenden?")) return;
@@ -176,7 +180,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+    <div>
       <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -188,7 +192,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
               {active ? "Antwortphase laeuft" : locked ? "Antworten gesperrt" : revealed ? "Aufloesung" : "Bereit"}
             </p>
           </div>
-          <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />
+          <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
         </div>
 
         <QuestionMedia question={question} large />
@@ -197,7 +201,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           {answerTexts &&
             (["A", "B", "C", "D"] as const).map((option) => (
               <div key={option} className={revealed && option === question.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>
-                <AnswerButton option={option} text={answerTexts[option]} disabled />
+                <AnswerButton option={option} text={answerTexts[option]} disabled size="stage" />
               </div>
             ))}
         </div>
@@ -219,12 +223,6 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           </button>
         </div>
       </section>
-      <aside className="rounded-lg border border-white/10 bg-show-panel/90 p-5">
-        <h2 className="text-2xl font-black">Rangliste</h2>
-        <div className="mt-4">
-          <Leaderboard rows={leaderboard} />
-        </div>
-      </aside>
     </div>
   );
 }

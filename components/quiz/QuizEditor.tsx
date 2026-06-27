@@ -65,9 +65,29 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
   const [description, setDescription] = useState(quiz?.description ?? "");
   const [questions, setQuestions] = useState<QuestionDraft[]>(quiz?.questions.length ? quiz.questions : [emptyQuestion]);
   const [saving, setSaving] = useState(false);
+  const [uploadingQuestion, setUploadingQuestion] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState("");
 
   function updateQuestion(index: number, key: string, value: string | number) {
     setQuestions((items) => items.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
+  }
+
+  async function uploadImage(index: number, file?: File | null) {
+    if (!file) return;
+    setUploadingQuestion(index);
+    setUploadError("");
+    const formData = new FormData();
+    formData.set("file", file);
+    const response = await fetch("/api/uploads/questions", { method: "POST", body: formData });
+    const result = await response.json().catch(() => null);
+    setUploadingQuestion(null);
+    if (!response.ok) {
+      setUploadError(result?.error ?? "Bild konnte nicht hochgeladen werden.");
+      return;
+    }
+    updateQuestion(index, "mediaType", "image");
+    updateQuestion(index, "mediaUrl", result.mediaUrl);
+    if (!questions[index]?.mediaAlt) updateQuestion(index, "mediaAlt", result.mediaAlt ?? "");
   }
 
   async function save(event: FormEvent) {
@@ -179,6 +199,16 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" placeholder="/uploads/questions/bild.jpg" value={question.mediaUrl ?? ""} onChange={(event) => updateQuestion(index, "mediaUrl", event.target.value)} />
               </label>
               <label>
+                <span className="text-sm font-bold text-white/70">Bild hochladen</span>
+                <input
+                  className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-show-gold file:px-3 file:py-2 file:font-black file:text-show-navy"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  disabled={uploadingQuestion === index}
+                  onChange={(event) => uploadImage(index, event.target.files?.[0])}
+                />
+              </label>
+              <label>
                 <span className="text-sm font-bold text-white/70">Alt-Text</span>
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaAlt ?? ""} onChange={(event) => updateQuestion(index, "mediaAlt", event.target.value)} />
               </label>
@@ -187,6 +217,10 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaCaption ?? ""} onChange={(event) => updateQuestion(index, "mediaCaption", event.target.value)} />
               </label>
             </div>
+            {question.mediaUrl && question.mediaType === "image" && (
+              <img className="mt-3 max-h-48 rounded border border-white/10 object-contain" src={question.mediaUrl} alt={question.mediaAlt || "Vorschau"} />
+            )}
+            {uploadError && <p className="mt-3 rounded border border-show-red/30 bg-show-red/10 p-3 text-sm font-bold text-show-red">{uploadError}</p>}
             <div className="mt-3 grid gap-3 md:grid-cols-4">
               <label>
                 <span className="text-sm font-bold text-white/70">Erinnerungsfrage</span>
