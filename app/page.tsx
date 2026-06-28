@@ -10,7 +10,7 @@ export default function Home() {
           <Logo />
           <h1 className="mt-10 max-w-3xl text-5xl font-black leading-tight text-white md:text-7xl">Fahrduell</h1>
           <p className="mt-5 max-w-2xl text-xl text-white/78">
-            Die installierbare Moderator-App fuer Live-Unterricht mit Smartboard, Teilnehmer-Handys und Showmaster-Steuerung.
+            Die installierbare Moderator-App für Live-Unterricht mit Smartboard, Teilnehmer-Handys und Showmaster-Steuerung.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="rounded border border-show-gold bg-show-gold px-6 py-3 font-black text-show-navy shadow-glow" href="/login">
@@ -24,7 +24,7 @@ export default function Home() {
             <StartScreenMusic />
           </div>
           <p className="mt-4 max-w-2xl text-sm font-semibold text-white/58">
-            Auf Android in Chrome oeffnen und zum Startbildschirm hinzufuegen. Danach kann der Moderator direkt in die App und braucht keinen separaten QR-Code mehr.
+            Auf Android in Chrome öffnen und zum Startbildschirm hinzufügen. Danach kann der Moderator direkt in die App und braucht keinen separaten QR-Code mehr.
           </p>
         </section>
         <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6 shadow-2xl">

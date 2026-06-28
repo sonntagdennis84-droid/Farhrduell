@@ -6,7 +6,7 @@
 - [ ] `APP_URL` zeigt auf dieselbe oeffentliche HTTPS-Domain.
 - [ ] `DATABASE_URL` zeigt auf PostgreSQL, nicht auf lokale Testdaten.
 - [ ] `AUTH_SECRET` ist gesetzt und lang genug.
-- [ ] `ALLOW_DEMO_LOGIN=false` in Produktion.
+- [ ] `NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL` ist gesetzt.
 - [ ] `SOCKET_CORS_ORIGIN` enthaelt die oeffentliche Domain.
 - [ ] PostgreSQL-Backup-Strategie ist geklaert.
 - [ ] `pnpm build` laeuft erfolgreich.

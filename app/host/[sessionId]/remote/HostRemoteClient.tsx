@@ -15,10 +15,10 @@ const statusLabel: Record<string, string> = {
   RUNNING: "Frage bereit",
   QUESTION_ACTIVE: "Antwortphase",
   ANSWER_LOCKED: "Gesperrt",
-  ANSWER_REVEALED: "Aufgeloest",
-  EXPLANATION_VISIBLE: "Erklaerung",
+  ANSWER_REVEALED: "Aufgelöst",
+  EXPLANATION_VISIBLE: "Erklärung",
   LEADERBOARD_VISIBLE: "Punktestand",
-  QUESTION_FINISHED: "Aufgeloest",
+  QUESTION_FINISHED: "Aufgelöst",
   FINISHED: "Beendet"
 };
 
@@ -119,10 +119,10 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
           <div className="mt-4 grid gap-3">
             {!active && !locked && !revealed && <RemoteButton icon={<Play size={22} />} label="Frage starten" onClick={() => action("start")} />}
             {active && <RemoteButton icon={<Lock size={22} />} label="Antworten sperren" onClick={() => action("lock")} />}
-            {locked && <RemoteButton icon={<Eye size={22} />} label="Antwort aufloesen" onClick={() => action("reveal")} />}
-            {revealed && !explanationVisible && <RemoteButton icon={<BookOpen size={22} />} label="Erklaerung anzeigen" onClick={() => action("explanation")} />}
+            {locked && <RemoteButton icon={<Eye size={22} />} label="Antwort auflösen" onClick={() => action("reveal")} />}
+            {revealed && !explanationVisible && <RemoteButton icon={<BookOpen size={22} />} label="Erklärung anzeigen" onClick={() => action("explanation")} />}
             {revealed && !leaderboardVisible && <RemoteButton icon={<Trophy size={22} />} label="Punktestand einblenden" onClick={() => action("leaderboard")} tone="secondary" />}
-            {revealed && <RemoteButton icon={<SkipForward size={22} />} label="Naechste Frage vorbereiten" onClick={() => action("next")} tone="secondary" />}
+            {revealed && <RemoteButton icon={<SkipForward size={22} />} label="Nächste Frage starten" onClick={() => action("next")} tone="secondary" />}
             <RemoteButton icon={<Flag size={22} />} label="Quiz beenden" onClick={() => action("finish")} tone="danger" />
           </div>
 

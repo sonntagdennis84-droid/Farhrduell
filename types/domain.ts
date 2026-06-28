@@ -49,9 +49,18 @@ export type Quiz = {
   title: string;
   description?: string | null;
   createdById: string;
+  categoryId?: string | null;
+  category?: QuizCategory | null;
   createdAt: string;
   updatedAt: string;
   questions: Question[];
+};
+
+export type QuizCategory = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type GameSession = {
@@ -76,6 +85,16 @@ export type Participant = {
   totalPoints: number;
   joinedAt: string;
   lastSeenAt?: string | null;
+};
+
+export type UserProfile = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  profileImageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Answer = {

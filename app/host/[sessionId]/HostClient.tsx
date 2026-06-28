@@ -42,7 +42,7 @@ function ExplanationPanel({ question }: { question: Question }) {
   return (
     <div className="mt-5 space-y-4 rounded-lg border border-show-gold/40 bg-show-gold/10 p-5 text-white/90">
       <div>
-        <p className="text-sm font-black uppercase text-show-gold">Erklaerung</p>
+        <p className="text-sm font-black uppercase text-show-gold">Erklärung</p>
         <p className="mt-1 text-2xl font-black">Richtig ist Antwort {question.correctAnswer}</p>
       </div>
       {question.explanation && <p className="text-lg leading-relaxed">{question.explanation}</p>}
@@ -93,6 +93,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
     socket.on("question_revealed", (bundle: Bundle) => {
@@ -102,7 +103,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
-      location.href = `/results/${session.id}`;
+      location.href = `/results/${bundle.session.id}`;
     });
     return () => {
       socket.disconnect();
@@ -116,8 +117,8 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       const nextValue = remainingSeconds(session, question);
       setSecondsLeft(nextValue);
       if (nextValue <= 0) {
-          window.clearInterval(interval);
-          fetch(`/api/sessions/${session.id}/lock`, { method: "POST" });
+        window.clearInterval(interval);
+        fetch(`/api/sessions/${session.id}/lock`, { method: "POST" });
       }
     }, 250);
     return () => window.clearInterval(interval);
@@ -154,10 +155,10 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             </div>
             <div className="flex flex-wrap gap-3">
               <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("reveal")}>
-                Zur Aufloesung
+                Zur Auflösung
               </button>
               <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>
-                Naechste Frage vorbereiten
+                Nächste Frage starten
               </button>
             </div>
           </div>
@@ -193,7 +194,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             </div>
             <h1 className="mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
             <p className="mt-3 inline-flex rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">
-              {active ? "Antwortphase laeuft" : locked ? "Antworten gesperrt" : revealed ? "Aufloesung" : "Bereit"}
+              {active ? "Antwortphase läuft" : locked ? "Antworten gesperrt" : revealed ? "Auflösung" : "Bereit"}
             </p>
           </div>
           <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
@@ -218,10 +219,10 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           </a>
           {!active && !locked && !revealed && <PrimaryButton onClick={() => action("start")}>Frage starten</PrimaryButton>}
           {active && <PrimaryButton onClick={() => action("lock")}>Antworten sperren</PrimaryButton>}
-          {locked && <PrimaryButton onClick={() => action("reveal")}>Antwort aufloesen</PrimaryButton>}
-          {revealed && !explanationVisible && <PrimaryButton onClick={() => action("explanation")}>Erklaerung anzeigen</PrimaryButton>}
+          {locked && <PrimaryButton onClick={() => action("reveal")}>Antwort auflösen</PrimaryButton>}
+          {revealed && !explanationVisible && <PrimaryButton onClick={() => action("explanation")}>Erklärung anzeigen</PrimaryButton>}
           {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("leaderboard")}>Punktestand einblenden</button>}
-          {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Naechste Frage vorbereiten</button>}
+          {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Nächste Frage starten</button>}
           <button className="rounded border border-white/20 px-5 py-3 font-bold" onClick={() => action("finish")}>
             Quiz beenden
           </button>

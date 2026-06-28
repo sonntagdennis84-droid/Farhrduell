@@ -3,8 +3,8 @@ import { verifyAuthToken } from "@/lib/auth-token";
 
 const AUTH_COOKIE = "fahrduell_user";
 
-const protectedPagePrefixes = ["/dashboard", "/quizzes", "/sessions", "/host"];
-const protectedApiPrefixes = ["/api/quizzes", "/api/sessions", "/api/uploads"];
+const protectedPagePrefixes = ["/dashboard", "/quizzes", "/sessions", "/host", "/profile"];
+const protectedApiPrefixes = ["/api/quizzes", "/api/sessions", "/api/uploads", "/api/categories", "/api/profile", "/api/moderators"];
 
 function isProtected(pathname: string) {
   return (
@@ -31,5 +31,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/quizzes/:path*", "/sessions/:path*", "/host/:path*", "/api/quizzes/:path*", "/api/sessions/:path*", "/api/uploads/:path*"]
+  matcher: ["/dashboard/:path*", "/quizzes/:path*", "/sessions/:path*", "/host/:path*", "/profile/:path*", "/api/quizzes/:path*", "/api/sessions/:path*", "/api/uploads/:path*", "/api/categories/:path*", "/api/profile/:path*", "/api/moderators/:path*"]
 };

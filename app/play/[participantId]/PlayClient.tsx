@@ -47,16 +47,17 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
     socket.on("session_updated", (bundle) => {
       setCurrentSession(bundle.session);
       if (bundle.session.status === "ANSWER_LOCKED") setMessage("Antworten sind gesperrt.");
-      if (bundle.session.status === "ANSWER_REVEALED") setMessage("Frage aufgeloest.");
-      if (bundle.session.status === "EXPLANATION_VISIBLE") setMessage("Erklaerung eingeblendet.");
-      if (bundle.session.status === "RUNNING") {
+      if (bundle.session.status === "ANSWER_REVEALED") setMessage("Frage aufgelöst.");
+      if (bundle.session.status === "EXPLANATION_VISIBLE") setMessage("Erklärung eingeblendet.");
+      if (bundle.session.status === "QUESTION_ACTIVE") {
         setSelected(null);
-        setMessage("Bereit fuer die naechste Frage.");
+        setMessage("");
+        setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
       }
     });
     socket.on("question_revealed", (bundle) => {
       setCurrentSession(bundle.session);
-      setMessage("Frage aufgeloest.");
+      setMessage("Frage aufgelöst.");
     });
     socket.on("quiz_finished", () => {
       location.href = `/results/${participant.sessionId}`;
@@ -105,7 +106,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
                 Frage {question ? currentSession.currentQuestionIndex + 1 : 0} von {quiz.questions.length}
               </p>
               <p className="mt-2 text-xs font-black uppercase text-white/55">
-                {active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Aufloesung" : "Warten"}
+                {active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
               </p>
             </div>
             {question && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
@@ -129,7 +130,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
 
           <div className="mt-4 min-h-7 text-center">
             {message && <p className="font-black text-show-gold">{message}</p>}
-            {!active && !locked && <p className="text-sm font-semibold text-white/60">Bereit fuer die naechste Frage.</p>}
+            {!active && !locked && <p className="text-sm font-semibold text-white/60">Warte auf die nächste Frage.</p>}
           </div>
         </section>
       </div>

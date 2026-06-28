@@ -1,9 +1,9 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AnswerOption, MediaType, Quiz } from "@/types/domain";
+import type { AnswerOption, MediaType, Quiz, QuizCategory } from "@/types/domain";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 
 type QuestionDraft = {
@@ -63,16 +63,29 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
   const router = useRouter();
   const [title, setTitle] = useState(quiz?.title ?? "");
   const [description, setDescription] = useState(quiz?.description ?? "");
+  const [categoryId, setCategoryId] = useState(quiz?.categoryId ?? "");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>(quiz?.questions.length ? quiz.questions : [emptyQuestion]);
+  const [categories, setCategories] = useState<QuizCategory[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadingQuestion, setUploadingQuestion] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data)) setCategories(data);
+      })
+      .catch(() => undefined);
+  }, []);
 
   function updateQuestion(index: number, key: string, value: string | number) {
     setQuestions((items) => items.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
   }
 
-  async function uploadImage(index: number, file?: File | null) {
+  async function uploadMedia(index: number, file?: File | null) {
     if (!file) return;
     setUploadingQuestion(index);
     setUploadError("");
@@ -82,7 +95,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
     const result = await response.json().catch(() => null);
     setUploadingQuestion(null);
     if (!response.ok) {
-      setUploadError(result?.error ?? "Bild konnte nicht hochgeladen werden.");
+      setUploadError(result?.error ?? "Medium konnte nicht hochgeladen werden.");
       return;
     }
     updateQuestion(index, "mediaType", result.mediaType);
@@ -93,14 +106,20 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
   async function save(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
+    setError("");
     const method = quiz ? "PUT" : "POST";
     const url = quiz ? `/api/quizzes/${quiz.id}` : "/api/quizzes";
     const response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, questions })
+      body: JSON.stringify({ title, description, categoryId, categoryName: newCategoryName, questions })
     });
-    const saved = await response.json();
+    const saved = await response.json().catch(() => null);
+    setSaving(false);
+    if (!response.ok || !saved?.id) {
+      setError(saved?.error ?? "Quiz konnte nicht gespeichert werden.");
+      return;
+    }
     router.push(`/quizzes/${saved.id}/edit`);
     router.refresh();
   }
@@ -117,6 +136,30 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
           <input className="mt-1 w-full rounded border border-white/15 bg-white/10 px-3 py-3" value={description ?? ""} onChange={(event) => setDescription(event.target.value)} />
         </label>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
+        <label>
+          <span className="text-sm font-bold text-white/70">Quiz-Kategorie</span>
+          <select className="mt-1 w-full rounded border border-white/15 bg-white/10 px-3 py-3" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+            <option value="">Bitte auswählen</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="text-sm font-bold text-white/70">Neue Kategorie anlegen</span>
+          <input
+            className="mt-1 w-full rounded border border-white/15 bg-white/10 px-3 py-3"
+            placeholder="Optionaler neuer Kategoriename"
+            value={newCategoryName}
+            onChange={(event) => setNewCategoryName(event.target.value)}
+          />
+        </label>
+      </div>
+
       <div className="space-y-4">
         {questions.map((question, index) => (
           <section key={index} className="rounded-lg border border-white/10 bg-white/5 p-4">
@@ -124,7 +167,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
               <h2 className="text-xl font-black text-show-gold">Frage {index + 1}</h2>
               {questions.length > 1 && (
                 <button type="button" className="rounded border border-white/20 px-3 py-2 text-sm font-bold" onClick={() => setQuestions((items) => items.filter((_, itemIndex) => itemIndex !== index))}>
-                  Loeschen
+                  Löschen
                 </button>
               )}
             </div>
@@ -155,14 +198,14 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 <input type="number" min="5" max="120" className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.timeLimitSeconds} onChange={(event) => updateQuestion(index, "timeLimitSeconds", Number(event.target.value))} />
               </label>
               <label>
-                <span className="text-sm font-bold text-white/70">Allgemeine Erklaerung</span>
+                <span className="text-sm font-bold text-white/70">Allgemeine Erklärung</span>
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.explanation ?? ""} onChange={(event) => updateQuestion(index, "explanation", event.target.value)} />
               </label>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {(["A", "B", "C", "D"] as AnswerOption[]).map((option) => (
                 <label key={option}>
-                  <span className="text-sm font-bold text-white/70">Erklaerung Antwort {option}</span>
+                  <span className="text-sm font-bold text-white/70">Erklärung Antwort {option}</span>
                   <input
                     className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3"
                     value={(question[`answer${option}Explanation` as keyof typeof question] as string) ?? ""}
@@ -189,23 +232,24 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
               <label>
                 <span className="text-sm font-bold text-white/70">Medientyp</span>
                 <select className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.mediaType ?? "none"} onChange={(event) => updateQuestion(index, "mediaType", event.target.value)}>
-                  <option value="none">kein Medium</option>
+                  <option value="none">Kein Medium</option>
                   <option value="image">Bild</option>
                   <option value="video">Video</option>
+                  <option value="audio">Audio</option>
                 </select>
               </label>
               <label>
                 <span className="text-sm font-bold text-white/70">Medien-URL</span>
-                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" placeholder="/uploads/questions/bild.jpg" value={question.mediaUrl ?? ""} onChange={(event) => updateQuestion(index, "mediaUrl", event.target.value)} />
+                <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" placeholder="/uploads/questions/datei" value={question.mediaUrl ?? ""} onChange={(event) => updateQuestion(index, "mediaUrl", event.target.value)} />
               </label>
               <label>
-                <span className="text-sm font-bold text-white/70">Bild hochladen</span>
+                <span className="text-sm font-bold text-white/70">Medium hochladen</span>
                 <input
                   className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-show-gold file:px-3 file:py-2 file:font-black file:text-show-navy"
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/ogg"
                   disabled={uploadingQuestion === index}
-                  onChange={(event) => uploadImage(index, event.target.files?.[0])}
+                  onChange={(event) => uploadMedia(index, event.target.files?.[0])}
                 />
               </label>
               <label>
@@ -235,7 +279,7 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
                 </select>
               </label>
               <label>
-                <span className="text-sm font-bold text-white/70">Kategorie</span>
+                <span className="text-sm font-bold text-white/70">Fragen-Kategorie</span>
                 <input className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={question.category ?? ""} onChange={(event) => updateQuestion(index, "category", event.target.value)} />
               </label>
               <label>
@@ -246,9 +290,12 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
           </section>
         ))}
       </div>
+
+      {error && <p className="rounded border border-show-red/30 bg-show-red/10 p-3 font-bold text-show-red">{error}</p>}
+
       <div className="flex flex-wrap gap-3">
         <button type="button" className="rounded border border-white/20 px-5 py-3 font-bold" onClick={() => setQuestions((items) => [...items, emptyQuestion])}>
-          Frage hinzufuegen
+          Frage hinzufügen
         </button>
         <PrimaryButton disabled={saving}>{saving ? "Speichert..." : "Quiz speichern"}</PrimaryButton>
       </div>

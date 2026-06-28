@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { isDemoLoginAllowed } from "@/lib/env";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const appMode = url.searchParams.get("app") === "1";
+
   return NextResponse.json({
-    demoLoginEnabled: isDemoLoginAllowed()
+    demoLoginEnabled: false,
+    appMode,
+    suggestedEmail: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? ""
   });
 }

@@ -12,22 +12,26 @@ if (!email || !password) {
   process.exit(1);
 }
 
-if (password.length < 12) {
-  console.error("INITIAL_ADMIN_PASSWORD must be at least 12 characters.");
+if (password.length < 8) {
+  console.error("INITIAL_ADMIN_PASSWORD must be at least 8 characters.");
   process.exit(1);
 }
 
-const existing = await prisma.user.findUnique({ where: { email } });
-if (existing) {
-  console.log(`Admin user already exists: ${existing.email}`);
-  await prisma.$disconnect();
-  process.exit(0);
-}
-
 const passwordHash = await bcrypt.hash(password, 12);
-const user = await prisma.user.create({
-  data: { email, name, passwordHash, role: "ADMIN" }
-});
+const existing = await prisma.user.findUnique({ where: { email } });
+
+const user = existing
+  ? await prisma.user.update({
+      where: { email },
+      data: {
+        name,
+        passwordHash,
+        role: "ADMIN"
+      }
+    })
+  : await prisma.user.create({
+      data: { email, name, passwordHash, role: "ADMIN" }
+    });
 
 console.log(`Admin user ready: ${user.email}`);
 await prisma.$disconnect();

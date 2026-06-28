@@ -1,6 +1,6 @@
 # Fahrduell MVP
 
-Fahrduell ist ein webbasiertes Live-Quiz fuer die Fahrlehrerausbildung. Das MVP enthaelt Login, Quizverwaltung, Live-Lobby mit QR-Code, Smartphone-Beitritt, synchrone Fragen, farbige Antwortbuttons, Timer, Punkteberechnung, Rangliste, Endergebnis und CSV-Export.
+Fahrduell ist ein webbasiertes Live-Quiz für die Fahrlehrerausbildung. Das MVP enthält Login, Quizverwaltung, Live-Lobby mit QR-Code, Smartphone-Beitritt, synchrone Fragen, farbige Antwortbuttons, Timer, Punkteberechnung, Rangliste, Endergebnis und CSV-Export.
 
 ## Start
 
@@ -8,32 +8,29 @@ Fahrduell ist ein webbasiertes Live-Quiz fuer die Fahrlehrerausbildung. Das MVP 
 pnpm dev
 ```
 
-Danach ist die App unter http://localhost:3000 erreichbar.
+Danach ist die App unter `http://localhost:3000` erreichbar.
 
-## Demo-Login
+## Login
 
-- E-Mail: `demo@fahrduell.local`
-- Passwort: `fahrduell`
-
-Dashboard, Quizverwaltung, Lobby und Moderatorenansicht sind durch diesen Login geschützt. Teilnehmerseiten unter `/join/...` und `/play/...` bleiben öffentlich, damit der QR-Code ohne Dozenten-Login funktioniert.
+Die App verwendet jetzt ausschließlich echte Benutzerkonten. Für den ersten Produktivzugang wird ein Admin über das Seed-Skript angelegt.
 
 ## Datenbank
 
-Das Prisma-Schema fuer PostgreSQL liegt in `prisma/schema.prisma`. Fuer das lokale MVP arbeitet die App zusaetzlich mit einem In-Memory-Store, damit der Live-Quiz-Ablauf ohne eingerichtete PostgreSQL-Instanz direkt ausprobiert werden kann.
+Das Prisma-Schema für PostgreSQL liegt in [prisma/schema.prisma](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/prisma/schema.prisma). Für das lokale MVP arbeitet die App zusätzlich mit einem In-Memory-Store, damit der Live-Quiz-Ablauf ohne eingerichtete PostgreSQL-Instanz direkt ausprobiert werden kann.
 
 ## Deployment
 
-Das produktionsnahe Setup ist fuer Docker, PostgreSQL und Socket.IO vorbereitet:
+Das produktionsnahe Setup ist für Docker, PostgreSQL und Socket.IO vorbereitet:
 
-- [Deployment-Anleitung](docs/DEPLOYMENT.md)
-- [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
-- [Repository Audit](docs/REPOSITORY_AUDIT.md)
-- [Online stellen](docs/GO_ONLINE.md)
-- [Quiz-Seeding](docs/QUIZ_SEEDING.md)
+- [Deployment-Anleitung](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/docs/DEPLOYMENT.md)
+- [Production Checklist](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/docs/PRODUCTION_CHECKLIST.md)
+- [Repository Audit](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/docs/REPOSITORY_AUDIT.md)
+- [Online stellen](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/docs/GO_ONLINE.md)
+- [Quiz-Seeding](C:/Users/sonnt/Documents/Codex/2026-06-26/arb/docs/QUIZ_SEEDING.md)
 - Healthcheck: `/api/health`
 - Docker Compose: `docker compose up --build`
 
-## Pruefung
+## Prüfung
 
 ```bash
 pnpm test

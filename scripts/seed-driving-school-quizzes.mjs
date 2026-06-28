@@ -205,6 +205,11 @@ async function ensureOwner() {
 }
 
 const ownerId = await ensureOwner();
+const schoolCategory = await prisma.quizCategory.upsert({
+  where: { name: "Fahrschule" },
+  update: {},
+  create: { name: "Fahrschule" }
+});
 
 for (const [slug, title, category, topic] of quizBlueprints) {
   const existing = await prisma.quiz.findFirst({ where: { title } });
@@ -219,6 +224,7 @@ for (const [slug, title, category, topic] of quizBlueprints) {
       title,
       description: `Live-Quiz fuer Fahrschueler: ${topic}.`,
       createdById: ownerId,
+      categoryId: schoolCategory.id,
       questions: { create: questionsFor(category, topic) }
     }
   });

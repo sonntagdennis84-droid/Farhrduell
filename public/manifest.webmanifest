@@ -2,7 +2,7 @@
   "name": "Fahrduell Moderator",
   "short_name": "Fahrduell",
   "description": "Moderator-Fernbedienung fuer Fahrduell Live-Quizze",
-  "start_url": "/login?app=1",
+  "start_url": "/login?app=1&email=sonntagdennis84%40gmail.com",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#08182E",

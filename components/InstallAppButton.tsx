@@ -48,7 +48,7 @@ export function InstallAppButton({ className = "" }: { className?: string }) {
   }
 
   if (!installPrompt) {
-    return <span className={`inline-flex min-h-11 items-center justify-center rounded border border-white/15 bg-white/5 px-5 py-3 font-bold text-white/70 ${className}`}>In Chrome: Zum Startbildschirm hinzufuegen</span>;
+    return <span className={`inline-flex min-h-11 items-center justify-center rounded border border-white/15 bg-white/5 px-5 py-3 font-bold text-white/70 ${className}`}>In Chrome: Zum Startbildschirm hinzufügen</span>;
   }
 
   return (

@@ -30,10 +30,12 @@ export default async function DashboardPage() {
             <p className="mt-2 text-white/70">{quizzes.length} Quiz verfügbar.</p>
           </Panel>
         </Link>
-        <Panel>
-          <h2 className="text-xl font-black text-show-gold">Ergebnisse</h2>
-          <p className="mt-2 text-white/70">Endranglisten und CSV-Export nach jeder Session.</p>
-        </Panel>
+        <Link href="/profile">
+          <Panel className="h-full hover:border-show-gold">
+            <h2 className="text-xl font-black text-show-gold">Profil</h2>
+            <p className="mt-2 text-white/70">Eigenes Profil pflegen und als Admin neue Moderatoren anlegen.</p>
+          </Panel>
+        </Link>
       </div>
     </AppShell>
   );

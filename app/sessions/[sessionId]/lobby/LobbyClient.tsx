@@ -60,12 +60,12 @@ export function LobbyClient({
         </div>
         <div className="mt-6 rounded-lg border border-show-gold/30 bg-show-gold/10 p-4">
           <div className="grid items-center gap-4 sm:grid-cols-[8rem_1fr]">
-            <img className="mx-auto h-32 w-32 rounded border-2 border-white bg-white p-2" src={remoteQrCode} alt="QR-Code fuer Moderator-Fernbedienung" />
+            <img className="mx-auto h-32 w-32 rounded border-2 border-white bg-white p-2" src={remoteQrCode} alt="QR-Code für Moderator-Fernbedienung" />
             <div>
               <h2 className="text-xl font-black text-show-gold">Moderator-App</h2>
               <p className="mt-1 text-sm font-semibold text-white/70">Mit Android scannen, einloggen und diese Session vom Handy steuern.</p>
               <Link className="mt-3 inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-4 py-2.5 font-bold hover:border-show-gold hover:text-show-gold" href={`/host/${initialSession.id}/remote`} target="_blank">
-                Fernbedienung oeffnen
+                Fernbedienung öffnen
               </Link>
               <p className="mt-2 break-all text-xs text-white/50">{remoteUrl}</p>
             </div>

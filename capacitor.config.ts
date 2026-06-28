@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Fahrduell Moderator",
   webDir: ".next",
   server: {
-    url: "https://fahrduell-production.up.railway.app/login?app=1",
+    url: "https://fahrduell-production.up.railway.app/login?app=1&email=sonntagdennis84%40gmail.com",
     cleartext: false,
     androidScheme: "https"
   },

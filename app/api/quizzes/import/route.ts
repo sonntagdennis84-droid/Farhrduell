@@ -14,6 +14,8 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file");
   const requestedTitle = String(formData.get("title") ?? "").trim();
+  const categoryId = String(formData.get("categoryId") ?? "").trim();
+  const categoryName = String(formData.get("categoryName") ?? "").trim();
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Keine Datei hochgeladen." }, { status: 400 });
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
     const quiz = await upsertQuiz({
       title: imported.title,
       description: imported.description,
+      categoryId,
+      categoryName,
       questions: imported.questions
     });
     return NextResponse.json({ quiz, importedQuestions: imported.questions.length }, { status: 201 });

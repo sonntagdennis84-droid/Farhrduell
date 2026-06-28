@@ -38,7 +38,7 @@ function commitQuestion(draft: Draft, questions: ImportedQuestion[]) {
   if (!draft.questionText && !draft.answerA && !draft.answerB && !draft.answerC && !draft.answerD) return;
   const correctAnswer = asAnswerOption(draft.correctAnswer) ?? "A";
   if (!draft.questionText || !draft.answerA || !draft.answerB || !draft.answerC || !draft.answerD) {
-    throw new Error("Eine Frage ist unvollstaendig. Bitte Frage sowie Antworten A, B, C und D pruefen.");
+    throw new Error("Eine Frage ist unvollständig. Bitte Frage sowie Antworten A, B, C und D prüfen.");
   }
   questions.push({
     ...draft,
@@ -134,7 +134,7 @@ export function parseQuizText(text: string, fallbackTitle = "Importiertes Quiz")
   }
 
   commitQuestion(draft, questions);
-  if (questions.length === 0) throw new Error("Keine Fragen gefunden. Bitte Format pruefen.");
+  if (questions.length === 0) throw new Error("Keine Fragen gefunden. Bitte Format prüfen.");
   return { title, description, questions };
 }
 
@@ -191,6 +191,6 @@ export function parseQuizRows(rows: Record<string, unknown>[], title: string, de
 
   const imported: ImportedQuestion[] = [];
   for (const draft of questions) commitQuestion(draft, imported);
-  if (imported.length === 0) throw new Error("Keine Fragen gefunden. Bitte Excel-Spalten pruefen.");
+  if (imported.length === 0) throw new Error("Keine Fragen gefunden. Bitte Excel-Spalten prüfen.");
   return { title, description, questions: imported };
 }

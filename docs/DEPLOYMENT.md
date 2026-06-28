@@ -19,12 +19,7 @@ pnpm install
 pnpm dev
 ```
 
-Lokaler Login:
-
-- E-Mail: `demo@fahrduell.local`
-- Passwort: `fahrduell`
-
-Der Demo-Login ist nur fuer Development gedacht. In Produktion ist er standardmaessig deaktiviert.
+Lokaler Zugriff erfolgt ueber echte Benutzerkonten. Den ersten Admin legst du ueber das Seed-Skript an.
 
 ## Environment-Variablen
 
@@ -34,9 +29,7 @@ Der Demo-Login ist nur fuer Development gedacht. In Produktion ist er standardma
 | `APP_URL` | Serverseitige Basis-URL | `https://fahrduell.de` |
 | `DATABASE_URL` | PostgreSQL-Verbindung fuer Prisma | `postgresql://USER:PASSWORD@HOST:5432/fahrduell?schema=public` |
 | `AUTH_SECRET` | Langes zufaelliges Secret fuer Auth-Haertung | `openssl rand -base64 32` |
-| `ALLOW_DEMO_LOGIN` | Demo-Login explizit erlauben | `false` |
-| `DEMO_EMAIL` | Demo-Login-Mail fuer Development | `demo@fahrduell.local` |
-| `DEMO_PASSWORD` | Demo-Login-Passwort fuer Development | `fahrduell` |
+| `NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL` | Vorgefuellte E-Mail im Login, z. B. fuer die Android-App | `admin@fahrduell.de` |
 | `SOCKET_CORS_ORIGIN` | Erlaubte Socket.IO-Origin, kommasepariert | `https://fahrduell.de` |
 | `REDIS_URL` | Optionaler Redis-Endpunkt fuer Skalierung | `redis://redis:6379` |
 | `PORT` | HTTP-Port im Container | `3000` |
@@ -86,7 +79,7 @@ INITIAL_ADMIN_NAME='Fahrduell Admin' \
 pnpm db:seed
 ```
 
-Das Passwort muss mindestens 12 Zeichen lang sein.
+Das Passwort muss mindestens 8 Zeichen lang sein.
 
 ## Quiz-Grundpaket anlegen
 

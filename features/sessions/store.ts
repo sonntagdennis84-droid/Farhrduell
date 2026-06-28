@@ -1,16 +1,19 @@
 import { randomBytes } from "node:crypto";
-import type { Answer, AnswerOption, GameSession, Participant, Question, Quiz } from "@/types/domain";
+import type { Answer, AnswerOption, GameSession, Participant, Question, Quiz, QuizCategory } from "@/types/domain";
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
+import { getCurrentUserId } from "@/features/auth/session";
 
 type QuizInput = Omit<Partial<Quiz>, "questions"> & {
   title: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
   questions: Array<
     Partial<Question> & Pick<Question, "questionText" | "answerA" | "answerB" | "answerC" | "answerD" | "correctAnswer">
   >;
 };
 
-const demoUserId = "demo-instructor";
+const systemUserId = "system-instructor";
 
 async function getPrisma() {
   const { prisma } = await import("@/lib/prisma");
@@ -36,7 +39,16 @@ function toQuiz(quiz: any): Quiz {
     ...quiz,
     createdAt: iso(quiz.createdAt) ?? new Date().toISOString(),
     updatedAt: iso(quiz.updatedAt) ?? new Date().toISOString(),
+    category: quiz.category ? toQuizCategory(quiz.category) : null,
     questions: [...(quiz.questions ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map(toQuestion)
+  };
+}
+
+function toQuizCategory(category: any): QuizCategory {
+  return {
+    ...category,
+    createdAt: iso(category.createdAt) ?? new Date().toISOString(),
+    updatedAt: iso(category.updatedAt) ?? new Date().toISOString()
   };
 }
 
@@ -70,13 +82,13 @@ function toAnswer(answer: any): Answer {
 async function ensureDemoUser() {
   const prisma = await getPrisma();
   await prisma.user.upsert({
-    where: { id: demoUserId },
+    where: { id: systemUserId },
     update: {},
     create: {
-      id: demoUserId,
-      name: "Fahrduell Demo",
-      email: "demo@fahrduell.local",
-      passwordHash: "development-demo-login",
+      id: systemUserId,
+      name: "Fahrduell System",
+      email: "system@fahrduell.local",
+      passwordHash: "system-account-not-for-login",
       role: "INSTRUCTOR"
     }
   });
@@ -84,16 +96,20 @@ async function ensureDemoUser() {
 
 async function ensureDemoQuiz() {
   const prisma = await getPrisma();
+  await ensureDefaultQuizCategories();
   const count = await prisma.quiz.count();
   if (count > 0) return;
+
+  const defaultCategory = await prisma.quizCategory.findUnique({ where: { name: "Fahrschule" } });
 
   await ensureDemoUser();
   await prisma.quiz.create({
     data: {
       id: "demo-quiz",
       title: "Fahrduell Demo-Quiz",
-      description: "Ein kompaktes Live-Quiz fuer die Fahrschulausbildung.",
-      createdById: demoUserId,
+      description: "Ein kompaktes Live-Quiz für die Fahrschulausbildung.",
+      createdById: systemUserId,
+      categoryId: defaultCategory?.id,
       questions: {
         create: [
           {
@@ -137,7 +153,7 @@ export async function listQuizzes() {
   const prisma = await getPrisma();
   const quizzes = await prisma.quiz.findMany({
     orderBy: { createdAt: "desc" },
-    include: { questions: { orderBy: { orderIndex: "asc" } } }
+    include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
   });
   return quizzes.map(toQuiz);
 }
@@ -147,24 +163,72 @@ export async function getQuiz(id: string) {
   const prisma = await getPrisma();
   const quiz = await prisma.quiz.findUnique({
     where: { id },
-    include: { questions: { orderBy: { orderIndex: "asc" } } }
+    include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
   });
   return quiz ? toQuiz(quiz) : null;
+}
+
+export async function ensureDefaultQuizCategories() {
+  const prisma = await getPrisma();
+  for (const name of ["Fahrschule", "Privat"]) {
+    await prisma.quizCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name }
+    });
+  }
+}
+
+export async function listQuizCategories() {
+  await ensureDefaultQuizCategories();
+  const prisma = await getPrisma();
+  const categories = await prisma.quizCategory.findMany({
+    orderBy: { name: "asc" }
+  });
+  return categories.map(toQuizCategory);
+}
+
+async function resolveQuizCategory(input: { categoryId?: string | null; categoryName?: string | null }) {
+  const prisma = await getPrisma();
+  const categoryName = input.categoryName?.trim();
+  if (categoryName) {
+    const category = await prisma.quizCategory.upsert({
+      where: { name: categoryName },
+      update: {},
+      create: { name: categoryName }
+    });
+    return category.id;
+  }
+  return input.categoryId?.trim() || null;
+}
+
+export async function createQuizCategory(name: string) {
+  const prisma = await getPrisma();
+  const cleanedName = name.trim();
+  if (!cleanedName) throw new Error("Bitte einen Kategorienamen eingeben.");
+  const category = await prisma.quizCategory.upsert({
+    where: { name: cleanedName },
+    update: {},
+    create: { name: cleanedName }
+  });
+  return toQuizCategory(category);
 }
 
 export async function upsertQuiz(input: QuizInput) {
   await ensureDemoUser();
   const prisma = await getPrisma();
   const existing = input.id ? await prisma.quiz.findUnique({ where: { id: input.id } }) : null;
+  const categoryId = await resolveQuizCategory(input);
+  const currentUserId = (await getCurrentUserId()) ?? systemUserId;
 
   const quiz = await prisma.$transaction(async (tx: any) => {
     const savedQuiz = existing
       ? await tx.quiz.update({
           where: { id: input.id },
-          data: { title: input.title, description: input.description ?? "" }
+          data: { title: input.title, description: input.description ?? "", categoryId }
         })
       : await tx.quiz.create({
-          data: { title: input.title, description: input.description ?? "", createdById: demoUserId }
+          data: { title: input.title, description: input.description ?? "", createdById: currentUserId, categoryId }
         });
 
     await tx.question.deleteMany({ where: { quizId: savedQuiz.id } });
@@ -201,7 +265,7 @@ export async function upsertQuiz(input: QuizInput) {
 
     return tx.quiz.findUniqueOrThrow({
       where: { id: savedQuiz.id },
-      include: { questions: { orderBy: { orderIndex: "asc" } } }
+      include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
     });
   });
 
@@ -341,9 +405,10 @@ export async function nextQuestion(sessionId: string) {
       data: { status: "FINISHED", finishedAt: new Date(), currentQuestionStartedAt: null }
     });
   } else {
+    const startedAt = new Date();
     await prisma.gameSession.update({
       where: { id: sessionId },
-      data: { currentQuestionIndex: bundle.session.currentQuestionIndex + 1, status: "RUNNING", currentQuestionStartedAt: null }
+      data: { currentQuestionIndex: bundle.session.currentQuestionIndex + 1, status: "QUESTION_ACTIVE", currentQuestionStartedAt: startedAt }
     });
   }
 

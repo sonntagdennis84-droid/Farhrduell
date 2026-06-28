@@ -29,7 +29,5 @@ export function getAllowedOrigins() {
 }
 
 export function isDemoLoginAllowed() {
-  if (process.env.ALLOW_DEMO_LOGIN === "true") return true;
-  if (process.env.ALLOW_DEMO_LOGIN === "false") return false;
-  return !isProduction();
+  return false;
 }

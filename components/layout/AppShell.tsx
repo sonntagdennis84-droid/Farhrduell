@@ -14,6 +14,9 @@ export function AppShell({ children }: PropsWithChildren) {
             <Link className="hover:text-show-gold" href="/quizzes">
               Quizze
             </Link>
+            <Link className="hover:text-show-gold" href="/profile">
+              Profil
+            </Link>
             <Link className="hover:text-show-gold" href="/dashboard">
               Dashboard
             </Link>
