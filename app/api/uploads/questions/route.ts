@@ -1,18 +1,21 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 const mediaRules = new Map([
-  ["image/jpeg", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
-  ["image/png", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
-  ["image/webp", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
-  ["image/gif", { mediaType: "image", maxBytes: 3 * 1024 * 1024 }],
-  ["video/mp4", { mediaType: "video", maxBytes: 15 * 1024 * 1024 }],
-  ["video/webm", { mediaType: "video", maxBytes: 15 * 1024 * 1024 }],
-  ["audio/mpeg", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
-  ["audio/mp3", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
-  ["audio/wav", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }],
-  ["audio/ogg", { mediaType: "audio", maxBytes: 8 * 1024 * 1024 }]
+  ["image/jpeg", { mediaType: "image", maxBytes: 5 * 1024 * 1024, extension: "jpg" }],
+  ["image/png", { mediaType: "image", maxBytes: 5 * 1024 * 1024, extension: "png" }],
+  ["image/webp", { mediaType: "image", maxBytes: 5 * 1024 * 1024, extension: "webp" }],
+  ["image/gif", { mediaType: "image", maxBytes: 5 * 1024 * 1024, extension: "gif" }],
+  ["video/mp4", { mediaType: "video", maxBytes: 25 * 1024 * 1024, extension: "mp4" }],
+  ["video/webm", { mediaType: "video", maxBytes: 25 * 1024 * 1024, extension: "webm" }],
+  ["audio/mpeg", { mediaType: "audio", maxBytes: 10 * 1024 * 1024, extension: "mp3" }],
+  ["audio/mp3", { mediaType: "audio", maxBytes: 10 * 1024 * 1024, extension: "mp3" }],
+  ["audio/wav", { mediaType: "audio", maxBytes: 10 * 1024 * 1024, extension: "wav" }],
+  ["audio/ogg", { mediaType: "audio", maxBytes: 10 * 1024 * 1024, extension: "ogg" }]
 ]);
 
 export async function POST(request: Request) {
@@ -29,11 +32,16 @@ export async function POST(request: Request) {
   }
 
   if (file.size > rule.maxBytes) {
-    return NextResponse.json({ error: "Die Datei ist zu groß für den Direkt-Upload." }, { status: 400 });
+    return NextResponse.json({ error: "Die Datei ist zu groß für den Upload." }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const mediaUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "questions");
+  await mkdir(uploadDir, { recursive: true });
+
+  const fileName = `${randomUUID()}.${rule.extension}`;
+  await writeFile(path.join(uploadDir, fileName), buffer);
+  const mediaUrl = `/uploads/questions/${fileName}`;
 
   return NextResponse.json({
     mediaType: rule.mediaType,

@@ -6,7 +6,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const quiz = await upsertQuiz(body);
-  return NextResponse.json(quiz, { status: 201 });
+  try {
+    const body = await request.json();
+    const quiz = await upsertQuiz(body);
+    return NextResponse.json(quiz, { status: 201 });
+  } catch (error) {
+    console.error("Quiz save failed", error);
+    return NextResponse.json({ error: "Quiz konnte nicht gespeichert werden. Bitte Medien erneut hochladen und noch einmal speichern." }, { status: 500 });
+  }
 }
