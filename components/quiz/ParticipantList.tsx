@@ -1,4 +1,5 @@
 import type { Participant } from "@/types/domain";
+import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 
 export function ParticipantList({ participants }: { participants: Participant[] }) {
   return (
@@ -8,7 +9,7 @@ export function ParticipantList({ participants }: { participants: Participant[] 
       ) : (
         participants.map((participant) => (
           <div key={participant.id} className="flex items-center gap-3 rounded border border-white/10 bg-white/5 px-3 py-2 font-semibold transition duration-300 animate-in fade-in">
-            <span className="text-2xl">{participant.emoji ?? "🚗"}</span>
+            <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} />
             <span>{participant.displayName}</span>
           </div>
         ))

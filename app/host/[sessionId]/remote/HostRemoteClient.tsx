@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, LiveAnswerHeatmapParticipant, Participant, Quiz } from "@/types/domain";
 import { Logo } from "@/components/ui/Logo";
+import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
@@ -218,8 +219,8 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
                         <span className="text-sm font-semibold text-white/35">-</span>
                       ) : (
                         names.map((participant) => (
-                          <span key={`${group.key}-${participant.id}`} className={`rounded border px-3 py-1 text-sm font-bold ${group.chipClass}`}>
-                            <span className="mr-1">{participant.emoji ?? "🚗"}</span>
+                          <span key={`${group.key}-${participant.id}`} className={`inline-flex items-center gap-2 rounded border px-2 py-1 text-sm font-bold ${group.chipClass}`}>
+                            <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
                             {participant.displayName}
                           </span>
                         ))
@@ -237,9 +238,9 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
           <div className="mt-3 space-y-2">
             {topRows.length === 0 && <p className="text-sm font-semibold text-white/55">Noch keine Punkte.</p>}
             {topRows.map((row) => (
-              <div key={row.id} className="grid grid-cols-[2.5rem_2rem_1fr_auto] items-center rounded border border-white/10 bg-white/5 px-3 py-2 transition duration-300">
+              <div key={row.id} className="grid grid-cols-[2.5rem_3rem_1fr_auto] items-center rounded border border-white/10 bg-white/5 px-3 py-2 transition duration-300">
                 <span className="font-black text-show-gold">#{row.rank}</span>
-                <span className="text-xl">{row.emoji ?? "🚗"}</span>
+                <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size="sm" />
                 <span className="font-bold">{row.displayName}</span>
                 <span className="font-black text-show-gold">{row.totalPoints}</span>
               </div>

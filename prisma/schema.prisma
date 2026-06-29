@@ -59,6 +59,7 @@ model Quiz {
   createdBy   User          @relation(fields: [createdById], references: [id])
   categoryId  String?
   category    QuizCategory? @relation(fields: [categoryId], references: [id])
+  isArchived  Boolean       @default(false)
   questions   Question[]
   sessions    GameSession[]
   createdAt   DateTime      @default(now())
@@ -126,6 +127,7 @@ model Participant {
   teamId      String?
   team        Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
   displayName String
+  avatarId    Int         @default(1)
   emoji       String      @default("🚗")
   totalPoints Int         @default(0)
   joinedAt    DateTime    @default(now())

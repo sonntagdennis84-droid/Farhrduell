@@ -4,6 +4,7 @@ import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
 import { getCurrentUserId } from "@/features/auth/session";
 import { defaultParticipantEmoji, isAllowedParticipantEmoji } from "@/lib/participant-emojis";
+import { defaultAvatarId, normalizeAvatarId } from "@/lib/participant-avatars";
 
 type QuizInput = Omit<Partial<Quiz>, "questions"> & {
   title: string;
@@ -38,6 +39,7 @@ function toQuestion(question: any): Question {
 function toQuiz(quiz: any): Quiz {
   return {
     ...quiz,
+    isArchived: Boolean(quiz.isArchived),
     createdAt: iso(quiz.createdAt) ?? new Date().toISOString(),
     updatedAt: iso(quiz.updatedAt) ?? new Date().toISOString(),
     category: quiz.category ? toQuizCategory(quiz.category) : null,
@@ -67,6 +69,7 @@ function toSession(session: any): GameSession {
 function toParticipant(participant: any): Participant {
   return {
     ...participant,
+    avatarId: normalizeAvatarId(participant.avatarId ?? defaultAvatarId),
     emoji: participant.emoji ?? defaultParticipantEmoji,
     joinedAt: iso(participant.joinedAt) ?? new Date().toISOString(),
     lastSeenAt: iso(participant.lastSeenAt)
@@ -237,10 +240,10 @@ export async function upsertQuiz(input: QuizInput) {
     const savedQuiz = existing
       ? await tx.quiz.update({
           where: { id: input.id },
-          data: { title: input.title, description: input.description ?? "", categoryId }
+          data: { title: input.title, description: input.description ?? "", categoryId, isArchived: input.isArchived ?? existing.isArchived ?? false }
         })
       : await tx.quiz.create({
-          data: { title: input.title, description: input.description ?? "", createdById: currentUserId, categoryId }
+          data: { title: input.title, description: input.description ?? "", createdById: currentUserId, categoryId, isArchived: false }
         });
 
     await tx.question.deleteMany({ where: { quizId: savedQuiz.id } });
@@ -289,12 +292,75 @@ export async function deleteQuiz(id: string) {
   await prisma.quiz.delete({ where: { id } });
 }
 
+export async function setQuizArchived(id: string, isArchived: boolean) {
+  const prisma = await getPrisma();
+  const quiz = await prisma.quiz.update({
+    where: { id },
+    data: { isArchived },
+    include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
+  });
+  return toQuiz(quiz);
+}
+
+export async function duplicateQuiz(id: string) {
+  await ensureDemoUser();
+  const prisma = await getPrisma();
+  const source = await prisma.quiz.findUnique({
+    where: { id },
+    include: { questions: { orderBy: { orderIndex: "asc" } } }
+  });
+  if (!source) return null;
+  const currentUserId = (await getCurrentUserId()) ?? source.createdById ?? systemUserId;
+  const quiz = await prisma.quiz.create({
+    data: {
+      title: `Kopie von ${source.title}`,
+      description: source.description ?? "",
+      createdById: currentUserId,
+      categoryId: source.categoryId,
+      isArchived: false,
+      questions: {
+        create: source.questions.map((question: any, index: number) => ({
+          orderIndex: index,
+          questionText: question.questionText,
+          answerA: question.answerA,
+          answerB: question.answerB,
+          answerC: question.answerC,
+          answerD: question.answerD,
+          correctAnswer: question.correctAnswer,
+          timeLimitSeconds: question.timeLimitSeconds,
+          explanation: question.explanation,
+          answerAExplanation: question.answerAExplanation,
+          answerBExplanation: question.answerBExplanation,
+          answerCExplanation: question.answerCExplanation,
+          answerDExplanation: question.answerDExplanation,
+          memorySentence: question.memorySentence,
+          memoryQuestion: question.memoryQuestion,
+          practicalExample: question.practicalExample,
+          hint: question.hint,
+          mediaType: question.mediaType,
+          mediaUrl: question.mediaUrl,
+          mediaAlt: question.mediaAlt,
+          mediaCaption: question.mediaCaption,
+          difficulty: question.difficulty,
+          category: question.category,
+          topic: question.topic,
+          imageUrl: question.imageUrl
+        }))
+      }
+    },
+    include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
+  });
+  return toQuiz(quiz);
+}
+
 function makeJoinCode() {
   return randomBytes(5).toString("base64url").replace(/[^A-Z0-9]/gi, "").slice(0, 8).toUpperCase();
 }
 
 export async function createSession(quizId: string) {
   const prisma = await getPrisma();
+  const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+  if (!quiz || quiz.isArchived) return null;
   let joinCode = makeJoinCode();
   while (!joinCode || (await prisma.gameSession.findUnique({ where: { joinCode } }))) {
     joinCode = makeJoinCode();
@@ -375,6 +441,7 @@ export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSess
     return {
       id: participant.id,
       displayName: participant.displayName,
+      avatarId: normalizeAvatarId(participant.avatarId),
       emoji: participant.emoji ?? defaultParticipantEmoji,
       selectedAnswer: answer?.selectedAnswer ?? null,
       hasAnswered: Boolean(answer),
@@ -406,15 +473,17 @@ export function allParticipantsAnsweredCurrentQuestion(bundle: Awaited<ReturnTyp
   return bundle.participants.every((participant: Participant) => answeredParticipantIds.has(participant.id));
 }
 
-export async function joinSession(joinCode: string, displayName: string, emoji = defaultParticipantEmoji) {
+export async function joinSession(joinCode: string, displayName: string, emoji = defaultParticipantEmoji, avatarId = defaultAvatarId) {
   const prisma = await getPrisma();
   const session = await getSessionByJoinCode(joinCode);
   if (!session) return null;
   const safeEmoji = isAllowedParticipantEmoji(emoji) ? emoji : defaultParticipantEmoji;
+  const safeAvatarId = normalizeAvatarId(avatarId);
   const participant = await prisma.participant.create({
     data: {
       sessionId: session.id,
       displayName: displayName.trim(),
+      avatarId: safeAvatarId,
       emoji: safeEmoji,
       lastSeenAt: new Date()
     }

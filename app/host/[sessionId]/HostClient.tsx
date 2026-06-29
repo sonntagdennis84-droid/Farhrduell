@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import type { GameSession, LeaderboardRow, Participant, Question, Quiz } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Leaderboard } from "@/components/quiz/Leaderboard";
+import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
@@ -198,7 +199,9 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             {topThree.map((row) => (
               <div key={row.id} className={row.rank === 1 ? "rounded-lg border border-show-gold bg-show-gold/10 p-6 shadow-glow" : "rounded-lg border border-white/10 bg-show-panel/90 p-6"}>
                 <div className="text-6xl font-black text-show-gold">#{row.rank}</div>
-                <div className="mt-4 text-5xl">{row.emoji ?? "🚗"}</div>
+                <div className="mt-4">
+                  <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size={row.rank === 1 ? "xl" : "lg"} />
+                </div>
                 <div className="mt-3 text-3xl font-black">{row.displayName}</div>
                 <div className="mt-2 text-2xl font-black text-show-gold">{row.totalPoints} Punkte</div>
                 <div className="mt-2 text-white/60">{row.correctAnswers} richtig</div>

@@ -51,6 +51,7 @@ export type Quiz = {
   createdById: string;
   categoryId?: string | null;
   category?: QuizCategory | null;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
   questions: Question[];
@@ -82,6 +83,7 @@ export type Participant = {
   id: string;
   sessionId: string;
   displayName: string;
+  avatarId?: number | null;
   emoji?: string | null;
   totalPoints: number;
   joinedAt: string;
@@ -119,6 +121,7 @@ export type LeaderboardRow = Participant & {
 export type LiveAnswerHeatmapParticipant = {
   id: string;
   displayName: string;
+  avatarId?: number | null;
   emoji?: string | null;
   selectedAnswer: AnswerOption | null;
   hasAnswered: boolean;

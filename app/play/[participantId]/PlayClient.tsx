@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 import type { AnswerOption, GameSession, Participant, Question, Quiz } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
+import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { Logo } from "@/components/ui/Logo";
 import { TimerRing } from "@/components/quiz/TimerRing";
 import { isAnswerLocked, isAnswerRevealed } from "@/lib/session-state";
@@ -91,14 +92,14 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
       <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
-          <div className="text-right">
-            <p className="text-sm font-black text-show-gold">
-              <span className="mr-1">{participant.emoji ?? "🚗"}</span>
-              {participant.displayName}
-            </p>
-            <p className={connected ? "text-xs font-bold text-show-green" : "text-xs font-bold text-show-red"}>
-              {connected ? "Verbunden" : "Verbindung wird wiederhergestellt"}
-            </p>
+          <div className="flex items-center gap-3 text-right">
+            <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
+            <div>
+              <p className="text-sm font-black text-show-gold">{participant.displayName}</p>
+              <p className={connected ? "text-xs font-bold text-show-green" : "text-xs font-bold text-show-red"}>
+                {connected ? "Verbunden" : "Verbindung wird wiederhergestellt"}
+              </p>
+            </div>
           </div>
         </header>
 
