@@ -2,12 +2,13 @@
 
 import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, Participant, Quiz } from "@/types/domain";
+import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, LiveAnswerHeatmapParticipant, Participant, Quiz } from "@/types/domain";
 import { Logo } from "@/components/ui/Logo";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
+import { useHapticFeedback } from "@/hooks/useHapticFeedback";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
@@ -33,7 +34,7 @@ function RemoteButton({ icon, label, onClick, tone = "primary" }: { icon: ReactN
         : "border-show-gold/70 bg-show-gold text-show-navy shadow-glow";
 
   return (
-    <button className={`flex min-h-16 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-base font-black transition active:scale-[0.98] ${toneClass}`} onClick={onClick}>
+    <button className={`flex min-h-[4.5rem] items-center justify-center gap-3 rounded-lg border px-5 py-4 text-lg font-black transition active:scale-[0.98] ${toneClass}`} onClick={onClick}>
       {icon}
       <span>{label}</span>
     </button>
@@ -45,6 +46,9 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [heatmap, setHeatmap] = useState<LiveAnswerHeatmap | null>(initialHeatmap);
+  const [allAnswersNotice, setAllAnswersNotice] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const previousStatusRef = useRef(session.status);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
   const active = session.status === "QUESTION_ACTIVE";
   const locked = session.status === "ANSWER_LOCKED";
@@ -53,18 +57,19 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const leaderboardVisible = isLeaderboardVisible(session.status);
   const topRows = useMemo(() => leaderboard.slice(0, 3), [leaderboard]);
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
+  const haptic = useHapticFeedback();
 
   const groupedAnswers = useMemo(() => {
     const groups = {
-      A: [] as string[],
-      B: [] as string[],
-      C: [] as string[],
-      D: [] as string[],
-      pending: [] as string[]
+      A: [] as LiveAnswerHeatmapParticipant[],
+      B: [] as LiveAnswerHeatmapParticipant[],
+      C: [] as LiveAnswerHeatmapParticipant[],
+      D: [] as LiveAnswerHeatmapParticipant[],
+      pending: [] as LiveAnswerHeatmapParticipant[]
     };
     for (const participant of heatmap?.participants ?? []) {
-      if (!participant.selectedAnswer) groups.pending.push(participant.displayName);
-      else groups[participant.selectedAnswer].push(participant.displayName);
+      if (!participant.selectedAnswer) groups.pending.push(participant);
+      else groups[participant.selectedAnswer].push(participant);
     }
     return groups;
   }, [heatmap]);
@@ -75,6 +80,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
     socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      setAllAnswersNotice(false);
       playSound("question-start");
     });
     socket.on("session_updated", (bundle: Bundle) => {
@@ -84,20 +90,36 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
     socket.on("question_revealed", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      haptic("success");
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
     socket.on("heatmap_updated", (nextHeatmap: LiveAnswerHeatmap) => {
       setHeatmap(nextHeatmap);
+      if (nextHeatmap.counts.pending === 0 && nextHeatmap.participants.length > 0) {
+        setAllAnswersNotice(true);
+        haptic("success");
+        window.setTimeout(() => setAllAnswersNotice(false), 2600);
+      }
     });
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      haptic("success");
       playSound("winner");
     });
     return () => {
       socket.disconnect();
     };
-  }, [playSound, session.id]);
+  }, [haptic, playSound, session.id]);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = session.status;
+    if (previousStatus === session.status) return;
+    if (session.status === "ANSWER_LOCKED") haptic(heatmap?.counts.pending === 0 ? "success" : "light");
+    if (session.status === "ANSWER_REVEALED") haptic("success");
+    if (session.status === "FINISHED") haptic("success");
+  }, [haptic, heatmap?.counts.pending, session.status]);
 
   async function action(path: string) {
     if (busyAction) return;
@@ -113,9 +135,28 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
     }
   }
 
+  function handlePointerDown(event: React.PointerEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest("button,a,input,textarea,select")) return;
+    touchStartRef.current = { x: event.clientX, y: event.clientY };
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLElement>) {
+    if (!touchStartRef.current) return;
+    const deltaX = event.clientX - touchStartRef.current.x;
+    const deltaY = event.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(deltaX) < 70 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
+    if (deltaX < 0) {
+      history.back();
+      return;
+    }
+    if ((revealed || leaderboardVisible) && session.status !== "FINISHED") void action("next");
+  }
+
   return (
-    <main className="show-grid safe-screen min-h-screen">
-      <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col">
+    <main className="show-grid safe-screen min-h-screen" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+      <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col pb-4">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
           <a className="rounded border border-white/15 px-3 py-2 text-sm font-bold text-white/75" href={`/host/${session.id}`}>
@@ -135,6 +176,12 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             </div>
           </div>
 
+          {allAnswersNotice && (
+            <div className="mt-4 rounded-lg border border-show-green/50 bg-show-green/15 px-4 py-3 text-sm font-black text-show-green shadow-glow">
+              Alle Antworten eingegangen
+            </div>
+          )}
+
           <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4">
             <p className="text-xs font-black uppercase text-white/45">
               Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
@@ -142,18 +189,6 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             <p className="mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
             {question?.hint && <p className="mt-3 rounded border border-white/10 bg-white/5 p-3 text-sm font-semibold text-white/70">Tipp: {question.hint}</p>}
           </div>
-
-          <div className="mt-4 grid gap-3">
-            {!active && !locked && !revealed && <RemoteButton icon={<Play size={22} />} label="Frage starten" onClick={() => action("start")} />}
-            {active && <RemoteButton icon={<Lock size={22} />} label="Antworten sperren" onClick={() => action("lock")} />}
-            {locked && <RemoteButton icon={<Eye size={22} />} label="Antwort auflösen" onClick={() => action("reveal")} />}
-            {revealed && !explanationVisible && <RemoteButton icon={<BookOpen size={22} />} label="Erklärung anzeigen" onClick={() => action("explanation")} />}
-            {revealed && !leaderboardVisible && <RemoteButton icon={<Trophy size={22} />} label="Punktestand einblenden" onClick={() => action("leaderboard")} tone="secondary" />}
-            {revealed && <RemoteButton icon={<SkipForward size={22} />} label="Nächste Frage starten" onClick={() => action("next")} tone="secondary" />}
-            <RemoteButton icon={<Flag size={22} />} label="Quiz beenden" onClick={() => action("finish")} tone="danger" />
-          </div>
-
-          {busyAction && <p className="mt-3 text-center text-sm font-black text-show-gold">Wird gesendet...</p>}
         </section>
 
         {(active || locked || revealed) && heatmap && (
@@ -182,9 +217,10 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
                       {names.length === 0 ? (
                         <span className="text-sm font-semibold text-white/35">-</span>
                       ) : (
-                        names.map((name) => (
-                          <span key={`${group.key}-${name}`} className={`rounded border px-3 py-1 text-sm font-bold ${group.chipClass}`}>
-                            {name}
+                        names.map((participant) => (
+                          <span key={`${group.key}-${participant.id}`} className={`rounded border px-3 py-1 text-sm font-bold ${group.chipClass}`}>
+                            <span className="mr-1">{participant.emoji ?? "🚗"}</span>
+                            {participant.displayName}
                           </span>
                         ))
                       )}
@@ -201,13 +237,27 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
           <div className="mt-3 space-y-2">
             {topRows.length === 0 && <p className="text-sm font-semibold text-white/55">Noch keine Punkte.</p>}
             {topRows.map((row) => (
-              <div key={row.id} className="grid grid-cols-[2.5rem_1fr_auto] items-center rounded border border-white/10 bg-white/5 px-3 py-2">
+              <div key={row.id} className="grid grid-cols-[2.5rem_2rem_1fr_auto] items-center rounded border border-white/10 bg-white/5 px-3 py-2 transition duration-300">
                 <span className="font-black text-show-gold">#{row.rank}</span>
+                <span className="text-xl">{row.emoji ?? "🚗"}</span>
                 <span className="font-bold">{row.displayName}</span>
                 <span className="font-black text-show-gold">{row.totalPoints}</span>
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="sticky bottom-3 mt-auto rounded-lg border border-white/10 bg-show-navy/95 p-3 shadow-2xl backdrop-blur">
+          <div className="grid gap-3">
+            {!active && !locked && !revealed && <RemoteButton icon={<Play size={24} />} label="Frage starten" onClick={() => action("start")} />}
+            {active && <RemoteButton icon={<Lock size={24} />} label="Antworten sperren" onClick={() => action("lock")} />}
+            {locked && <RemoteButton icon={<Eye size={24} />} label="Antwort auflösen" onClick={() => action("reveal")} />}
+            {revealed && <RemoteButton icon={<SkipForward size={24} />} label="Nächste Frage starten" onClick={() => action("next")} />}
+            {revealed && !leaderboardVisible && <RemoteButton icon={<Trophy size={24} />} label="Punktestand einblenden" onClick={() => action("leaderboard")} tone="secondary" />}
+            {revealed && !explanationVisible && <RemoteButton icon={<BookOpen size={24} />} label="Erklärung anzeigen" onClick={() => action("explanation")} tone="secondary" />}
+            <RemoteButton icon={<Flag size={24} />} label="Quiz beenden" onClick={() => action("finish")} tone="danger" />
+          </div>
+          {busyAction && <p className="mt-3 text-center text-sm font-black text-show-gold">Wird gesendet...</p>}
         </section>
       </div>
     </main>

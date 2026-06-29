@@ -198,7 +198,8 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             {topThree.map((row) => (
               <div key={row.id} className={row.rank === 1 ? "rounded-lg border border-show-gold bg-show-gold/10 p-6 shadow-glow" : "rounded-lg border border-white/10 bg-show-panel/90 p-6"}>
                 <div className="text-6xl font-black text-show-gold">#{row.rank}</div>
-                <div className="mt-4 text-3xl font-black">{row.displayName}</div>
+                <div className="mt-4 text-5xl">{row.emoji ?? "🚗"}</div>
+                <div className="mt-3 text-3xl font-black">{row.displayName}</div>
                 <div className="mt-2 text-2xl font-black text-show-gold">{row.totalPoints} Punkte</div>
                 <div className="mt-2 text-white/60">{row.correctAnswers} richtig</div>
               </div>

@@ -126,6 +126,7 @@ model Participant {
   teamId      String?
   team        Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
   displayName String
+  emoji       String      @default("🚗")
   totalPoints Int         @default(0)
   joinedAt    DateTime    @default(now())
   lastSeenAt  DateTime?

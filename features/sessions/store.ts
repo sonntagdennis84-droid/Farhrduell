@@ -3,6 +3,7 @@ import type { Answer, AnswerOption, GameSession, LiveAnswerHeatmap, Participant,
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
 import { getCurrentUserId } from "@/features/auth/session";
+import { defaultParticipantEmoji, isAllowedParticipantEmoji } from "@/lib/participant-emojis";
 
 type QuizInput = Omit<Partial<Quiz>, "questions"> & {
   title: string;
@@ -66,6 +67,7 @@ function toSession(session: any): GameSession {
 function toParticipant(participant: any): Participant {
   return {
     ...participant,
+    emoji: participant.emoji ?? defaultParticipantEmoji,
     joinedAt: iso(participant.joinedAt) ?? new Date().toISOString(),
     lastSeenAt: iso(participant.lastSeenAt)
   };
@@ -373,6 +375,7 @@ export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSess
     return {
       id: participant.id,
       displayName: participant.displayName,
+      emoji: participant.emoji ?? defaultParticipantEmoji,
       selectedAnswer: answer?.selectedAnswer ?? null,
       hasAnswered: Boolean(answer),
       answeredAt: answer?.submittedAt ?? null
@@ -403,14 +406,16 @@ export function allParticipantsAnsweredCurrentQuestion(bundle: Awaited<ReturnTyp
   return bundle.participants.every((participant: Participant) => answeredParticipantIds.has(participant.id));
 }
 
-export async function joinSession(joinCode: string, displayName: string) {
+export async function joinSession(joinCode: string, displayName: string, emoji = defaultParticipantEmoji) {
   const prisma = await getPrisma();
   const session = await getSessionByJoinCode(joinCode);
   if (!session) return null;
+  const safeEmoji = isAllowedParticipantEmoji(emoji) ? emoji : defaultParticipantEmoji;
   const participant = await prisma.participant.create({
     data: {
       sessionId: session.id,
       displayName: displayName.trim(),
+      emoji: safeEmoji,
       lastSeenAt: new Date()
     }
   });

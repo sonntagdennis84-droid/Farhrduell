@@ -92,7 +92,10 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
           <div className="text-right">
-            <p className="text-sm font-black text-show-gold">{participant.displayName}</p>
+            <p className="text-sm font-black text-show-gold">
+              <span className="mr-1">{participant.emoji ?? "🚗"}</span>
+              {participant.displayName}
+            </p>
             <p className={connected ? "text-xs font-bold text-show-green" : "text-xs font-bold text-show-red"}>
               {connected ? "Verbunden" : "Verbindung wird wiederhergestellt"}
             </p>

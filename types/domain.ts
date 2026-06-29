@@ -82,6 +82,7 @@ export type Participant = {
   id: string;
   sessionId: string;
   displayName: string;
+  emoji?: string | null;
   totalPoints: number;
   joinedAt: string;
   lastSeenAt?: string | null;
@@ -118,6 +119,7 @@ export type LeaderboardRow = Participant & {
 export type LiveAnswerHeatmapParticipant = {
   id: string;
   displayName: string;
+  emoji?: string | null;
   selectedAnswer: AnswerOption | null;
   hasAnswered: boolean;
   answeredAt?: string | null;
