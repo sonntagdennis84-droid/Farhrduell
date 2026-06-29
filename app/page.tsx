@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { StartScreenMusic } from "@/components/StartScreenMusic";
-import { Logo } from "@/components/ui/Logo";
 
 export default function Home() {
   return (
     <main className="show-grid flex min-h-screen items-center">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
         <section>
-          <Logo />
+          <img className="h-auto w-full max-w-[20rem]" src="/branding/fahrduell-home-logo.png" alt="Fahrduell" />
           <h1 className="mt-10 max-w-3xl text-5xl font-black leading-tight text-white md:text-7xl">Fahrduell</h1>
           <p className="mt-5 max-w-2xl text-xl text-white/78">
             Die installierbare Moderator-App für Live-Unterricht mit Smartboard, Teilnehmer-Handys und Showmaster-Steuerung.
