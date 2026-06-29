@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   if (result.bundle) {
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("answer_submitted", result.answer);
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("leaderboard_updated", result.bundle.leaderboard);
+    if (result.autoLocked) getIo()?.to(sessionRoom(result.bundle.session.id)).emit("session_updated", result.bundle);
     const heatmap = buildLiveAnswerHeatmap(result.bundle);
     if (heatmap) getIo()?.to(moderatorRoom(result.bundle.session.id)).emit("heatmap_updated", heatmap);
   }

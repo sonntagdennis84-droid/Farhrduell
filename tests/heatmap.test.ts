@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLiveAnswerHeatmap } from "../features/sessions/store";
+import { allParticipantsAnsweredCurrentQuestion, buildLiveAnswerHeatmap } from "../features/sessions/store";
 import { buildLeaderboard } from "../lib/scoring";
 import type { Answer, GameSession, Participant, Question, Quiz } from "../types/domain";
 
@@ -122,5 +122,29 @@ describe("live answer heatmap", () => {
 
     expect(hiddenHeatmap?.correctAnswer).toBeNull();
     expect(revealedHeatmap?.correctAnswer).toBe("B");
+  });
+
+  it("detects when all participants answered the current question", () => {
+    const participants = [participant("p1", "Dennis"), participant("p2", "Julia")];
+
+    expect(
+      allParticipantsAnsweredCurrentQuestion({
+        session: session("QUESTION_ACTIVE"),
+        quiz,
+        participants,
+        answers: [answer("p1", "A"), answer("p2", "B")],
+        leaderboard: []
+      })
+    ).toBe(true);
+
+    expect(
+      allParticipantsAnsweredCurrentQuestion({
+        session: session("QUESTION_ACTIVE"),
+        quiz,
+        participants,
+        answers: [answer("p1", "A")],
+        leaderboard: []
+      })
+    ).toBe(false);
   });
 });

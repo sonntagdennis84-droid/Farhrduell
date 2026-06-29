@@ -393,6 +393,16 @@ export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSess
   };
 }
 
+export function allParticipantsAnsweredCurrentQuestion(bundle: Awaited<ReturnType<typeof getSessionBundle>>) {
+  if (!bundle) return false;
+  const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
+  if (!question || bundle.participants.length === 0) return false;
+  const answeredParticipantIds = new Set(
+    bundle.answers.filter((answer: Answer) => answer.questionId === question.id).map((answer: Answer) => answer.participantId)
+  );
+  return bundle.participants.every((participant: Participant) => answeredParticipantIds.has(participant.id));
+}
+
 export async function joinSession(joinCode: string, displayName: string) {
   const prisma = await getPrisma();
   const session = await getSessionByJoinCode(joinCode);
@@ -515,7 +525,12 @@ export async function submitAnswer(participantId: string, selectedAnswer: Answer
       where: { id: participantId },
       data: { totalPoints: { increment: pointsAwarded }, lastSeenAt: new Date() }
     });
-    return { ok: true as const, answer: toAnswer(answer), bundle: await getSessionBundle(bundle.session.id) };
+    const freshBundle = await getSessionBundle(bundle.session.id);
+    if (freshBundle?.session.status === "QUESTION_ACTIVE" && allParticipantsAnsweredCurrentQuestion(freshBundle)) {
+      const lockedBundle = await lockAnswers(bundle.session.id);
+      return { ok: true as const, answer: toAnswer(answer), bundle: lockedBundle, autoLocked: true as const };
+    }
+    return { ok: true as const, answer: toAnswer(answer), bundle: freshBundle, autoLocked: false as const };
   } catch {
     return { ok: false as const, reason: "Antwort wurde bereits gespeichert" };
   }
