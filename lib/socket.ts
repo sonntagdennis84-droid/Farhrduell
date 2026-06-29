@@ -9,3 +9,7 @@ export function getIo(): FahrduellIo {
 export function sessionRoom(sessionId: string) {
   return `session:${sessionId}`;
 }
+
+export function moderatorRoom(sessionId: string) {
+  return `moderator:${sessionId}`;
+}

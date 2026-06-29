@@ -4,8 +4,10 @@ import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-rea
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, Participant, Quiz } from "@/types/domain";
+import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, Participant, Quiz } from "@/types/domain";
 import { Logo } from "@/components/ui/Logo";
+import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
+import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
@@ -38,10 +40,11 @@ function RemoteButton({ icon, label, onClick, tone = "primary" }: { icon: ReactN
   );
 }
 
-export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
+export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBundle: Bundle; initialHeatmap: LiveAnswerHeatmap | null }) {
   const [session, setSession] = useState(initialBundle.session);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [heatmap, setHeatmap] = useState<LiveAnswerHeatmap | null>(initialHeatmap);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
   const active = session.status === "QUESTION_ACTIVE";
   const locked = session.status === "ANSWER_LOCKED";
@@ -49,6 +52,22 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
   const explanationVisible = isExplanationVisible(session.status);
   const leaderboardVisible = isLeaderboardVisible(session.status);
   const topRows = useMemo(() => leaderboard.slice(0, 3), [leaderboard]);
+  const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
+
+  const groupedAnswers = useMemo(() => {
+    const groups = {
+      A: [] as string[],
+      B: [] as string[],
+      C: [] as string[],
+      D: [] as string[],
+      pending: [] as string[]
+    };
+    for (const participant of heatmap?.participants ?? []) {
+      if (!participant.selectedAnswer) groups.pending.push(participant.displayName);
+      else groups[participant.selectedAnswer].push(participant.displayName);
+    }
+    return groups;
+  }, [heatmap]);
 
   useEffect(() => {
     const socket = io();
@@ -56,6 +75,7 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      playSound("question-start");
     });
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
@@ -66,14 +86,18 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
       setLeaderboard(bundle.leaderboard);
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
+    socket.on("heatmap_updated", (nextHeatmap: LiveAnswerHeatmap) => {
+      setHeatmap(nextHeatmap);
+    });
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      playSound("winner");
     });
     return () => {
       socket.disconnect();
     };
-  }, [session.id]);
+  }, [playSound, session.id]);
 
   async function action(path: string) {
     if (busyAction) return;
@@ -105,7 +129,10 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
               <p className="text-xs font-black uppercase text-show-gold">Moderator-App</p>
               <h1 className="mt-1 text-2xl font-black">Fernbedienung</h1>
             </div>
-            <span className="rounded border border-show-gold/40 bg-show-gold/10 px-3 py-2 text-sm font-black text-show-gold">{statusLabel[session.status] ?? session.status}</span>
+            <div className="flex items-center gap-2">
+              <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
+              <span className="rounded border border-show-gold/40 bg-show-gold/10 px-3 py-2 text-sm font-black text-show-gold">{statusLabel[session.status] ?? session.status}</span>
+            </div>
           </div>
 
           <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4">
@@ -128,6 +155,46 @@ export function HostRemoteClient({ initialBundle }: { initialBundle: Bundle }) {
 
           {busyAction && <p className="mt-3 text-center text-sm font-black text-show-gold">Wird gesendet...</p>}
         </section>
+
+        {(active || locked || revealed) && heatmap && (
+          <section className="mt-4 rounded-lg border border-white/10 bg-show-panel/85 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-black uppercase text-show-gold">Live-Antworten</h2>
+              <span className="text-xs font-bold text-white/50">{heatmap.participants.length} Teilnehmer</span>
+            </div>
+            <div className="mt-3 grid gap-3">
+              {[
+                { key: "A", title: "A", chipClass: "border-sky-400/40 bg-sky-400/10 text-sky-300" },
+                { key: "B", title: "B", chipClass: "border-orange-400/40 bg-orange-400/10 text-orange-300" },
+                { key: "C", title: "C", chipClass: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" },
+                { key: "D", title: "D", chipClass: "border-rose-400/40 bg-rose-400/10 text-rose-300" },
+                { key: "pending", title: "Noch offen", chipClass: "border-white/15 bg-white/5 text-white/75" }
+              ].map((group) => {
+                const names = groupedAnswers[group.key as keyof typeof groupedAnswers];
+                const isCorrectGroup = revealed && heatmap.correctAnswer === group.key;
+                return (
+                  <div key={group.key} className={isCorrectGroup ? "rounded-lg border border-show-gold bg-show-gold/10 p-3 shadow-glow" : "rounded-lg border border-white/10 bg-black/20 p-3"}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`rounded border px-3 py-1 text-xs font-black ${group.chipClass}`}>{group.title}</span>
+                      <span className="text-xs font-bold text-white/45">{names.length}</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {names.length === 0 ? (
+                        <span className="text-sm font-semibold text-white/35">-</span>
+                      ) : (
+                        names.map((name) => (
+                          <span key={`${group.key}-${name}`} className={`rounded border px-3 py-1 text-sm font-bold ${group.chipClass}`}>
+                            {name}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="mt-4 rounded-lg border border-white/10 bg-show-panel/85 p-4">
           <h2 className="text-sm font-black uppercase text-show-gold">Top 3</h2>

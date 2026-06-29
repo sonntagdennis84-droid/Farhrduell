@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getIo, sessionRoom } from "@/lib/socket";
-import { startQuestion } from "@/features/sessions/store";
+import { buildLiveAnswerHeatmap, startQuestion } from "@/features/sessions/store";
+import { getIo, moderatorRoom, sessionRoom } from "@/lib/socket";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
@@ -8,5 +8,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ se
   if (!bundle) return NextResponse.json({ error: "Session nicht gefunden" }, { status: 404 });
   getIo()?.to(sessionRoom(sessionId)).emit("session_started", bundle);
   getIo()?.to(sessionRoom(sessionId)).emit("question_started", bundle);
+  const heatmap = buildLiveAnswerHeatmap(bundle);
+  if (heatmap) getIo()?.to(moderatorRoom(sessionId)).emit("heatmap_updated", heatmap);
   return NextResponse.json(bundle);
 }

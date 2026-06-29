@@ -1,6 +1,6 @@
 # Fahrduell Repository Audit
 
-Stand: 2026-06-27
+Stand: 2026-06-29
 
 ## Framework und Runtime
 
@@ -32,7 +32,7 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 
 - Moderator-/Dozentenbereiche sind durch Middleware geschuetzt.
 - Auth-Cookie ist `httpOnly`, in Produktion `secure`, und wird mit `AUTH_SECRET` signiert.
-- Demo-Login ist in Produktion standardmaessig deaktiviert.
+- Demo-Login wurde entfernt; Produktion laeuft jetzt ueber echte Admin-/Moderator-Konten.
 - Login- und Join-Endpunkte haben einfache In-Memory-Rate-Limits.
 
 ## Realtime
@@ -40,6 +40,22 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 - Socket.IO-CORS liest erlaubte Origins aus `SOCKET_CORS_ORIGIN`, `NEXT_PUBLIC_APP_URL` oder `APP_URL`.
 - Development erlaubt flexible Origins.
 - Fuer mehrere App-Instanzen ist Redis vorbereitet, aber der Socket.IO-Redis-Adapter ist noch nicht aktiviert.
+- Moderator-spezifische Live-Daten laufen getrennt ueber den Room `moderator:{sessionId}`.
+- Die Live-Heatmap fuer Antworten wird nur an Moderator-Clients verteilt, nicht an Teilnehmer oder die oeffentliche Beameransicht.
+
+## Moderatorsteuerung
+
+- Die Fernbedienung unter `app/host/[sessionId]/remote` zeigt live, wer schon geantwortet hat, welche Antwort gewaehlt wurde und wer noch offen ist.
+- Gleiche Teilnehmernamen werden fuer die Heatmap automatisch eindeutig gemacht.
+- Die korrekte Antwortgruppe wird erst nach der Aufloesung markiert.
+- Beim erneuten Oeffnen der Fernbedienung waehrend einer laufenden Frage wird die aktuelle Heatmap sofort serverseitig mitgegeben.
+
+## Soundsystem
+
+- Host-Ansicht und Moderator-Fernbedienung nutzen `hooks/useFahrduellSound.ts`.
+- Sound an/aus wird per `localStorage` pro Oberflaeche gespeichert.
+- Fehlende Sounddateien unter `public/sounds/` sind unkritisch und fuehren nicht zu Abstuerzen.
+- Browserseitige Audio-Sperren nach dem Seitenladen sind beruecksichtigt und werden still behandelt.
 
 ## Deployment-Dateien
 
@@ -48,6 +64,7 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 - `docker-compose.yml`
 - `docs/DEPLOYMENT.md`
 - `docs/PRODUCTION_CHECKLIST.md`
+- `docs/VERSION_NEXT.md`
 - `app/api/health/route.ts`
 - `scripts/seed-admin.mjs`
 - `scripts/seed-driving-school-quizzes.mjs`
@@ -55,9 +72,9 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 
 ## Naechster empfohlener Arbeitsschritt
 
-Reconnect und Skalierung produktionsreif machen:
+Deployment-Feinschliff und Medienausbau:
 
-1. Teilnehmer-Reconnect-UX verbessern, inklusive klarer Statusanzeige nach Wiederaufnahme.
-2. Socket.IO Redis-Adapter bei mehreren Instanzen aktivieren.
-3. Akzeptanztest: Server neu starten, Quiz/Session/Ergebnisse bleiben erhalten.
-4. Akzeptanztest: kurzer Smartphone-Verbindungsabbruch fuehrt zur Wiederaufnahme.
+1. Echte Sounddateien fuer die vorbereiteten Audio-Slots hinterlegen.
+2. Reconnect-Akzeptanztests auf echten Smartphones dokumentieren.
+3. Socket.IO Redis-Adapter aktivieren, sobald mehrere App-Instanzen relevant werden.
+4. Medien-Upload-UX fuer Bilder, Audio und Video weiter vereinfachen.

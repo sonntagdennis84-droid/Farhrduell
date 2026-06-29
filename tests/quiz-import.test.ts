@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuizRows, parseQuizText } from "../lib/quiz-import";
+import { parseQuizRows, parseQuizRowsDetailed, parseQuizText } from "../lib/quiz-import";
 
 describe("quiz import", () => {
   it("imports the Word demo quiz text format", () => {
@@ -41,7 +41,7 @@ Erklaerung: Elsa besitzt magische Kraefte.
           "Antwort C": "Parken",
           "Antwort D": "Ende",
           "Richtige Antwort": "B",
-          Erklaerung: "Es warnt vor Gefahr."
+          Erklärung: "Es warnt vor Gefahr."
         }
       ],
       "Excel Quiz"
@@ -50,5 +50,35 @@ Erklaerung: Elsa besitzt magische Kraefte.
     expect(quiz.questions).toHaveLength(1);
     expect(quiz.questions[0].questionText).toContain("Dreieck");
     expect(quiz.questions[0].correctAnswer).toBe("B");
+  });
+
+  it("splits a master Excel file into multiple quizzes by Quiztitel", () => {
+    const parsed = parseQuizRowsDetailed(
+      [
+        {
+          Quiztitel: "Grundstoff 1",
+          Frage: "Frage eins?",
+          "Antwort A": "A1",
+          "Antwort B": "B1",
+          "Antwort C": "C1",
+          "Antwort D": "D1",
+          "Richtige Antwort": "A"
+        },
+        {
+          Quiztitel: "Grundstoff 2",
+          Frage: "Frage zwei?",
+          "Antwort A": "A2",
+          "Antwort B": "B2",
+          "Antwort C": "C2",
+          "Antwort D": "D2",
+          "Richtige Antwort": "B"
+        }
+      ],
+      "Masterdatei"
+    );
+
+    expect(parsed.quizzes).toHaveLength(2);
+    expect(parsed.quizzes[0].title).toBe("Grundstoff 1");
+    expect(parsed.quizzes[1].title).toBe("Grundstoff 2");
   });
 });

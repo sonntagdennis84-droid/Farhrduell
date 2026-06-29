@@ -28,6 +28,7 @@ globalThis.fahrduellIo = io;
 io.on("connection", (socket) => {
   socket.on("host:join", ({ sessionId }) => {
     socket.join(`session:${sessionId}`);
+    socket.join(`moderator:${sessionId}`);
   });
 
   socket.on("participant:join", ({ sessionId, participantId }) => {

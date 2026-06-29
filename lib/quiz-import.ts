@@ -8,6 +8,10 @@ export type ImportedQuiz = {
   questions: ImportedQuestion[];
 };
 
+export type ParsedQuizRowsResult = {
+  quizzes: ImportedQuiz[];
+};
+
 type Draft = Partial<ImportedQuestion> & {
   _field?: keyof ImportedQuestion;
 };
@@ -26,6 +30,10 @@ function normalizeHeader(value: string) {
     .replaceAll("ö", "oe")
     .replaceAll("ü", "ue")
     .replaceAll("ß", "ss")
+    .replaceAll("Ã¤", "ae")
+    .replaceAll("Ã¶", "oe")
+    .replaceAll("Ã¼", "ue")
+    .replaceAll("ÃŸ", "ss")
     .replace(/[^a-z0-9]/g, "");
 }
 
@@ -138,7 +146,10 @@ export function parseQuizText(text: string, fallbackTitle = "Importiertes Quiz")
   return { title, description, questions };
 }
 
-const headerAliases: Record<string, keyof ImportedQuestion> = {
+const headerAliases: Record<string, keyof ImportedQuestion | "quizTitle"> = {
+  quiztitel: "quizTitle",
+  quiztitle: "quizTitle",
+  titel: "quizTitle",
   frage: "questionText",
   fragetext: "questionText",
   question: "questionText",
@@ -165,24 +176,26 @@ const headerAliases: Record<string, keyof ImportedQuestion> = {
   hint: "hint",
   zeit: "timeLimitSeconds",
   zeitlimit: "timeLimitSeconds",
+  zeitlimitsek: "timeLimitSeconds",
   timelimit: "timeLimitSeconds",
   schwierigkeit: "difficulty",
   kategorie: "category",
   thema: "topic",
   medientyp: "mediaType",
   medienurl: "mediaUrl",
+  medienpfad: "mediaUrl",
   alttext: "mediaAlt",
   medientitel: "mediaCaption"
 };
 
-export function parseQuizRows(rows: Record<string, unknown>[], title: string, description = ""): ImportedQuiz {
+function parseSingleQuizRows(rows: Record<string, unknown>[], title: string, description = ""): ImportedQuiz {
   const questions = rows
     .map((row) => {
       const draft: Draft = {};
       for (const [header, value] of Object.entries(row)) {
         const field = headerAliases[normalizeHeader(header)];
         const text = clean(value);
-        if (!field || !text) continue;
+        if (!field || !text || field === "quizTitle") continue;
         draft[field] = (field === "timeLimitSeconds" ? Number(text) : text) as never;
       }
       return draft;
@@ -193,4 +206,28 @@ export function parseQuizRows(rows: Record<string, unknown>[], title: string, de
   for (const draft of questions) commitQuestion(draft, imported);
   if (imported.length === 0) throw new Error("Keine Fragen gefunden. Bitte Excel-Spalten prüfen.");
   return { title, description, questions: imported };
+}
+
+export function parseQuizRowsDetailed(rows: Record<string, unknown>[], fallbackTitle: string, description = ""): ParsedQuizRowsResult {
+  const grouped = new Map<string, Record<string, unknown>[]>();
+
+  for (const row of rows) {
+    const normalizedEntries = Object.entries(row).map(([header, value]) => [normalizeHeader(header), value] as const);
+    const titleEntry = normalizedEntries.find(([header]) => header === "quiztitel" || header === "quiztitle" || header === "titel");
+    const rowTitle = clean(titleEntry?.[1]) || fallbackTitle;
+    if (!grouped.has(rowTitle)) grouped.set(rowTitle, []);
+    grouped.get(rowTitle)?.push(row);
+  }
+
+  return {
+    quizzes: [...grouped.entries()].map(([title, quizRows]) => parseSingleQuizRows(quizRows, title, description))
+  };
+}
+
+export function parseQuizRows(rows: Record<string, unknown>[], title: string, description = ""): ImportedQuiz {
+  const result = parseQuizRowsDetailed(rows, title, description);
+  if (result.quizzes.length !== 1) {
+    throw new Error("Die Excel-Datei enthält mehrere Quiztitel. Bitte den Mehrfach-Import verwenden.");
+  }
+  return result.quizzes[0];
 }

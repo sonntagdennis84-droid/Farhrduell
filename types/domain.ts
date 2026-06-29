@@ -114,3 +114,24 @@ export type LeaderboardRow = Participant & {
   correctAnswers: number;
   averageResponseTimeMs: number;
 };
+
+export type LiveAnswerHeatmapParticipant = {
+  id: string;
+  displayName: string;
+  selectedAnswer: AnswerOption | null;
+  hasAnswered: boolean;
+  answeredAt?: string | null;
+};
+
+export type LiveAnswerHeatmap = {
+  questionId: string;
+  correctAnswer?: AnswerOption | null;
+  participants: LiveAnswerHeatmapParticipant[];
+  counts: {
+    A: number;
+    B: number;
+    C: number;
+    D: number;
+    pending: number;
+  };
+};

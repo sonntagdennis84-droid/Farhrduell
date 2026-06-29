@@ -20,16 +20,16 @@ export async function POST(request: Request) {
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Keine Bilddatei hochgeladen." }, { status: 400 });
+    return NextResponse.json({ error: "Keine Datei hochgeladen." }, { status: 400 });
   }
 
   const rule = mediaRules.get(file.type);
   if (!rule) {
-    return NextResponse.json({ error: "Bitte Bild, Video oder Audio in einem unterstuetzten Format hochladen." }, { status: 400 });
+    return NextResponse.json({ error: "Bitte Bild, Video oder Audio in einem unterstützten Format hochladen." }, { status: 400 });
   }
 
   if (file.size > rule.maxBytes) {
-    return NextResponse.json({ error: "Die Datei ist zu gross fuer den Direkt-Upload." }, { status: 400 });
+    return NextResponse.json({ error: "Die Datei ist zu groß für den Direkt-Upload." }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());

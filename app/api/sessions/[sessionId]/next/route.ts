@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getIo, sessionRoom } from "@/lib/socket";
-import { nextQuestion } from "@/features/sessions/store";
+import { buildLiveAnswerHeatmap, nextQuestion } from "@/features/sessions/store";
+import { getIo, moderatorRoom, sessionRoom } from "@/lib/socket";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
@@ -11,5 +11,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ se
     return NextResponse.json(advanced);
   }
   getIo()?.to(sessionRoom(sessionId)).emit("session_updated", advanced);
+  const heatmap = buildLiveAnswerHeatmap(advanced);
+  if (heatmap) getIo()?.to(moderatorRoom(sessionId)).emit("heatmap_updated", heatmap);
   return NextResponse.json(advanced);
 }

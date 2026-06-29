@@ -48,3 +48,12 @@ Im Railway-Projekt kann das Skript als einmaliger Job oder lokal gegen die Railw
 ```bash
 DATABASE_URL="postgresql://..." pnpm db:seed:quizzes
 ```
+
+## Theorie-Quizpaket
+
+Neben dem Seed-Skript unterstützt Fahrduell auch ein externes Theorie-Quizpaket über den Import-Assistenten.
+
+- 14 einzelne Excel-Dateien können gesammelt hochgeladen werden.
+- Eine Master-Datei mit mehreren Quiztiteln wird automatisch in mehrere Quizze getrennt.
+- Das bevorzugte Tabellenblatt heißt `Fragen`.
+- Erwartete Spalten stehen in `docs/QUIZ_IMPORT.md`.

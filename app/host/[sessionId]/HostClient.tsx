@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import type { GameSession, LeaderboardRow, Participant, Question, Quiz } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Leaderboard } from "@/components/quiz/Leaderboard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
+import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
@@ -73,12 +75,14 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [session, setSession] = useState(initialBundle.session);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const countdownWarningPlayedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
   const active = session.status === "QUESTION_ACTIVE";
   const locked = session.status === "ANSWER_LOCKED";
   const revealed = isAnswerRevealed(session.status);
   const explanationVisible = isExplanationVisible(session.status);
   const scoreboardVisible = isLeaderboardVisible(session.status);
+  const { soundEnabled, playSound, toggleSound } = useFahrduellSound("host");
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -89,6 +93,8 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
+      countdownWarningPlayedRef.current = null;
+      playSound("question-start");
     });
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
@@ -99,16 +105,18 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.on("question_revealed", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      playSound("answer-correct");
     });
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
+      playSound("winner");
       location.href = `/results/${bundle.session.id}`;
     });
     return () => {
       socket.disconnect();
     };
-  }, [session.id]);
+  }, [playSound, session.id]);
 
   useEffect(() => {
     if (!active || !question) return;
@@ -116,16 +124,22 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     const interval = window.setInterval(() => {
       const nextValue = remainingSeconds(session, question);
       setSecondsLeft(nextValue);
+      if (nextValue <= 5 && nextValue > 0 && countdownWarningPlayedRef.current !== question.id) {
+        countdownWarningPlayedRef.current = question.id;
+        playSound("countdown-warning");
+      }
       if (nextValue <= 0) {
         window.clearInterval(interval);
         fetch(`/api/sessions/${session.id}/lock`, { method: "POST" });
       }
     }, 250);
     return () => window.clearInterval(interval);
-  }, [active, question, session]);
+  }, [active, playSound, question, session]);
 
   async function action(path: string) {
     if (path === "finish" && !window.confirm("Quiz wirklich beenden?")) return;
+    if (path === "leaderboard") playSound("leaderboard");
+    if (path === "start") playSound("quiz-start");
     const response = await fetch(`/api/sessions/${session.id}/${path}`, { method: "POST" });
     const bundle = await response.json();
     if (path === "next" && bundle.session.status === "FINISHED") {
@@ -154,6 +168,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
               <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("reveal")}>
                 Zur Auflösung
               </button>
@@ -197,7 +212,10 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
               {active ? "Antwortphase läuft" : locked ? "Antworten gesperrt" : revealed ? "Auflösung" : "Bereit"}
             </p>
           </div>
-          <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
+          <div className="flex flex-col items-end gap-3">
+            <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
+            <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
+          </div>
         </div>
 
         <QuestionMedia question={question} large />

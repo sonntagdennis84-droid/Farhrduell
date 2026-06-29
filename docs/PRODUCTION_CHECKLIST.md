@@ -21,6 +21,8 @@
 - [ ] `/api/health` antwortet mit `ok: true`.
 - [ ] `/login` ist ueber HTTPS erreichbar.
 - [ ] `pnpm smoke:mvp` laeuft gegen die oeffentliche URL.
+- [ ] Import mit mindestens einer Excel-Datei getestet.
+- [ ] Datenbankverbindung fuer Import und Seed geprueft.
 
 ## Funktionstest
 

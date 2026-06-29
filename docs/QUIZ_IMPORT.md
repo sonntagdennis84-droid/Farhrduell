@@ -1,6 +1,39 @@
 # Quiz-Import
 
-Fahrduell kann Quizze ueber Word oder Excel importieren.
+Fahrduell kann Quizze über Word, Excel und CSV importieren. Der Import-Assistent arbeitet in drei Schritten:
+
+1. Dateien wählen
+2. Vorschau prüfen
+3. Import bestätigen
+
+## Mehrfach-Upload
+
+Der Importbereich unterstützt mehrere Dateien in einem Vorgang:
+
+- `.docx`
+- `.xlsx`
+- `.xls`
+- `.csv`
+
+Jede Datei wird separat verarbeitet. Ein Fehler in einer Datei stoppt die übrigen Dateien nicht.
+
+## Importbericht
+
+Nach Vorschau oder Import zeigt Fahrduell pro Datei:
+
+- Dateiname
+- erkannter Quizname
+- Anzahl importierter Fragen
+- Anzahl übersprungener Fragen
+- Warnungen
+- Fehlerstatus
+
+## Dubletten
+
+Quiztitel werden beim Import geprüft.
+
+- Ohne Ersetzen wird ein bestehendes Quiz mit gleichem Titel übersprungen.
+- Mit aktivierter Ersetzen-Option wird das bestehende Quiz überschrieben.
 
 ## Word-Format
 
@@ -15,10 +48,10 @@ B) Antwort B
 C) Antwort C
 D) Antwort D
 Richtige Antwort: B
-Erklaerung: Kurze Erklaerung
+Erklärung: Kurze Erklärung
 ```
 
-Unterstuetzte optionale Felder:
+Unterstützte optionale Felder:
 
 - Merksatz
 - Erinnerungsfrage
@@ -35,27 +68,33 @@ Unterstuetzte optionale Felder:
 
 ## Excel-Format
 
-Die erste Tabelle sollte eine Kopfzeile enthalten. Unterstuetzte Spaltennamen:
+Die erste Tabelle oder bevorzugt das Blatt `Fragen` sollte eine Kopfzeile enthalten. Unterstützte Spaltennamen:
 
+- Quiztitel
+- Kategorie
+- Thema
+- ZeitlimitSek
 - Frage
 - Antwort A
 - Antwort B
 - Antwort C
 - Antwort D
 - Richtige Antwort
-- Erklaerung
+- Erklärung
 - Merksatz
 - Erinnerungsfrage
 - Praxisbeispiel
 - Tipp
-- Zeitlimit
-- Kategorie
-- Thema
 - Schwierigkeit
 - Medientyp
 - MedienURL
+- Medienpfad
 - AltText
 - Medientitel
+
+## Master-Dateien
+
+Wenn eine Excel-Datei mehrere Quizze enthält, trennt Fahrduell diese automatisch anhand der Spalte `Quiztitel`. So kann eine Master-Datei mehrere einzelne Quizze in einem Import erzeugen.
 
 ## Nutzung
 
@@ -65,4 +104,4 @@ In der App:
 Quizze -> Import
 ```
 
-Nach dem Import wird das neue Quiz direkt im Editor geoeffnet, damit Fragen vor dem Live-Einsatz geprueft werden koennen.
+Nach erfolgreichem Import gelangst du direkt zur Quizübersicht oder zum ersten importierten Quiz.

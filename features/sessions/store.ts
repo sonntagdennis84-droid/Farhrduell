@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { Answer, AnswerOption, GameSession, Participant, Question, Quiz, QuizCategory } from "@/types/domain";
+import type { Answer, AnswerOption, GameSession, LiveAnswerHeatmap, Participant, Question, Quiz, QuizCategory } from "@/types/domain";
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
 import { getCurrentUserId } from "@/features/auth/session";
@@ -163,6 +163,16 @@ export async function getQuiz(id: string) {
   const prisma = await getPrisma();
   const quiz = await prisma.quiz.findUnique({
     where: { id },
+    include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
+  });
+  return quiz ? toQuiz(quiz) : null;
+}
+
+export async function getQuizByTitle(title: string) {
+  await ensureDemoQuiz();
+  const prisma = await getPrisma();
+  const quiz = await prisma.quiz.findFirst({
+    where: { title: title.trim() },
     include: { category: true, questions: { orderBy: { orderIndex: "asc" } } }
   });
   return quiz ? toQuiz(quiz) : null;
@@ -332,6 +342,55 @@ export async function getSessionBundle(sessionId: string) {
   const participants = sessionRecord.participants.map(toParticipant);
   const answers = sessionRecord.answers.map(toAnswer);
   return { session, quiz, participants, answers, leaderboard: buildLeaderboard(participants, answers) };
+}
+
+function disambiguateParticipantNames(participants: Participant[]) {
+  const counts = new Map<string, number>();
+  return participants.map((participant) => {
+    const nextCount = (counts.get(participant.displayName) ?? 0) + 1;
+    counts.set(participant.displayName, nextCount);
+    return {
+      ...participant,
+      displayName: nextCount === 1 ? participant.displayName : `${participant.displayName} (${nextCount})`
+    };
+  });
+}
+
+export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSessionBundle>>): LiveAnswerHeatmap | null {
+  if (!bundle) return null;
+  const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
+  if (!question) return null;
+
+  const participants = disambiguateParticipantNames(bundle.participants);
+  const answersByParticipant = new Map<string, Answer>(
+    bundle.answers
+      .filter((answer: Answer) => answer.questionId === question.id)
+      .map((answer: Answer) => [answer.participantId, answer] as const)
+  );
+
+  const heatmapParticipants = participants.map((participant) => {
+    const answer = answersByParticipant.get(participant.id);
+    return {
+      id: participant.id,
+      displayName: participant.displayName,
+      selectedAnswer: answer?.selectedAnswer ?? null,
+      hasAnswered: Boolean(answer),
+      answeredAt: answer?.submittedAt ?? null
+    };
+  });
+
+  return {
+    questionId: question.id,
+    correctAnswer: bundle.session.status === "ANSWER_REVEALED" || bundle.session.status === "EXPLANATION_VISIBLE" || bundle.session.status === "LEADERBOARD_VISIBLE" || bundle.session.status === "FINISHED" ? question.correctAnswer : null,
+    participants: heatmapParticipants,
+    counts: {
+      A: heatmapParticipants.filter((participant) => participant.selectedAnswer === "A").length,
+      B: heatmapParticipants.filter((participant) => participant.selectedAnswer === "B").length,
+      C: heatmapParticipants.filter((participant) => participant.selectedAnswer === "C").length,
+      D: heatmapParticipants.filter((participant) => participant.selectedAnswer === "D").length,
+      pending: heatmapParticipants.filter((participant) => !participant.hasAnswered).length
+    }
+  };
 }
 
 export async function joinSession(joinCode: string, displayName: string) {

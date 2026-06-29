@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getIo, sessionRoom } from "@/lib/socket";
-import { submitAnswer } from "@/features/sessions/store";
+import { buildLiveAnswerHeatmap, submitAnswer } from "@/features/sessions/store";
+import { getIo, moderatorRoom, sessionRoom } from "@/lib/socket";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -9,6 +9,8 @@ export async function POST(request: Request) {
   if (result.bundle) {
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("answer_submitted", result.answer);
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("leaderboard_updated", result.bundle.leaderboard);
+    const heatmap = buildLiveAnswerHeatmap(result.bundle);
+    if (heatmap) getIo()?.to(moderatorRoom(result.bundle.session.id)).emit("heatmap_updated", heatmap);
   }
   return NextResponse.json(result.answer, { status: 201 });
 }
