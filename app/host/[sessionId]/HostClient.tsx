@@ -75,6 +75,8 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [session, setSession] = useState(initialBundle.session);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [welcomeQueue, setWelcomeQueue] = useState<string[]>([]);
+  const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
   const countdownWarningPlayedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
   const active = session.status === "QUESTION_ACTIVE";
@@ -102,6 +104,9 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
+    socket.on("participant_joined", (participant: Participant) => {
+      setWelcomeQueue((items) => [...items, participant.displayName]);
+    });
     socket.on("question_revealed", (bundle: Bundle) => {
       setSession(bundle.session);
       setLeaderboard(bundle.leaderboard);
@@ -117,6 +122,15 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       socket.disconnect();
     };
   }, [playSound, session.id]);
+
+  useEffect(() => {
+    if (activeWelcome || welcomeQueue.length === 0) return;
+    const [nextName, ...rest] = welcomeQueue;
+    setActiveWelcome(nextName);
+    setWelcomeQueue(rest);
+    const timeout = window.setTimeout(() => setActiveWelcome(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [activeWelcome, welcomeQueue]);
 
   useEffect(() => {
     if (!active || !question) return;
@@ -202,6 +216,12 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   return (
     <div>
       <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6">
+        {activeWelcome && (
+          <div className="mb-5 rounded-lg border border-show-gold/40 bg-show-gold/12 px-5 py-4 shadow-glow">
+            <p className="text-sm font-black uppercase text-show-gold">Neuer Teilnehmer</p>
+            <p className="mt-1 text-3xl font-black text-white">Willkommen, {activeWelcome}!</p>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-sm font-black uppercase text-show-gold">

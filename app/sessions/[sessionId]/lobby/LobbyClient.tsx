@@ -24,11 +24,16 @@ export function LobbyClient({
   remoteUrl: string;
 }) {
   const [participants, setParticipants] = useState(initialParticipants);
+  const [welcomeQueue, setWelcomeQueue] = useState<string[]>([]);
+  const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = io();
     socket.emit("host:join", { sessionId: initialSession.id });
-    socket.on("participant_joined", (participant: Participant) => setParticipants((items) => [...items.filter((item) => item.id !== participant.id), participant]));
+    socket.on("participant_joined", (participant: Participant) => {
+      setParticipants((items) => [...items.filter((item) => item.id !== participant.id), participant]);
+      setWelcomeQueue((items) => [...items, participant.displayName]);
+    });
     socket.on("session_started", () => {
       location.href = `/host/${initialSession.id}`;
     });
@@ -36,6 +41,15 @@ export function LobbyClient({
       socket.disconnect();
     };
   }, [initialSession.id]);
+
+  useEffect(() => {
+    if (activeWelcome || welcomeQueue.length === 0) return;
+    const [nextName, ...rest] = welcomeQueue;
+    setActiveWelcome(nextName);
+    setWelcomeQueue(rest);
+    const timeout = window.setTimeout(() => setActiveWelcome(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [activeWelcome, welcomeQueue]);
 
   async function startQuiz() {
     await fetch(`/api/sessions/${initialSession.id}/start`, { method: "POST" });
@@ -45,6 +59,12 @@ export function LobbyClient({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
       <div className="rounded-lg border border-white/10 bg-show-panel/90 p-6">
+        {activeWelcome && (
+          <div className="mb-5 rounded-lg border border-show-gold/40 bg-show-gold/12 px-4 py-4 shadow-glow">
+            <p className="text-sm font-black uppercase text-show-gold">Neuer Teilnehmer</p>
+            <p className="mt-1 text-2xl font-black text-white">Willkommen, {activeWelcome}!</p>
+          </div>
+        )}
         <QRCodePanel qrCode={qrCode} joinCode={initialSession.joinCode} joinUrl={joinUrl} />
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Link
