@@ -35,10 +35,10 @@ export function ParticipantAvatar({
   const safeEmoji = emoji || defaultParticipantEmoji;
 
   return (
-    <span className={cn("relative inline-flex shrink-0 items-center justify-center rounded-full border border-show-gold/45 bg-black/35 shadow-glow", sizeClass[size])}>
+    <span className={cn("relative inline-flex shrink-0 items-center justify-center rounded-full bg-black/20", sizeClass[size])}>
       <img
         alt={label ? `Avatar von ${label}` : `Avatar ${safeAvatarId}`}
-        className="h-full w-full rounded-full object-contain p-1"
+        className="h-full w-full rounded-full object-contain"
         loading={priority ? "eager" : "lazy"}
         src={avatarSrc(safeAvatarId)}
       />
