@@ -7,7 +7,9 @@ import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { Logo } from "@/components/ui/Logo";
 import { TimerRing } from "@/components/quiz/TimerRing";
+import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { isAnswerLocked, isAnswerRevealed } from "@/lib/session-state";
+import { cn } from "@/lib/utils";
 
 function remainingSeconds(session: GameSession, question: Question) {
   const startedAt = session.currentQuestionStartedAt ? new Date(session.currentQuestionStartedAt).getTime() : Date.now();
@@ -27,6 +29,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   const locked = isAnswerLocked(currentSession.status);
   const revealed = isAnswerRevealed(currentSession.status);
   const eliminated = Boolean(currentParticipant.isEliminated);
+  const adaptive = useAdaptiveStage("fahrduell-play-stage-mode");
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -96,7 +99,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   }
 
   return (
-    <main className="show-grid safe-screen">
+    <main className={cn("show-grid safe-screen overflow-x-hidden", adaptive.className)}>
       <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
@@ -112,10 +115,10 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
           </div>
         </header>
 
-        <section className="mt-4 flex flex-1 flex-col rounded-lg border border-white/10 bg-show-panel/95 p-4 shadow-2xl">
+        <section className="stage-panel mt-4 flex flex-1 flex-col rounded-lg border border-white/10 bg-show-panel/95 p-4 shadow-2xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase text-show-gold">
+              <p className="stage-body-text text-xs font-black uppercase text-show-gold">
                 Frage {question ? currentSession.currentQuestionIndex + 1 : 0} von {quiz.questions.length}
               </p>
               <p className="mt-2 text-xs font-black uppercase text-white/55">
@@ -125,7 +128,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
             {question && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
           </div>
 
-          <div className="mt-5 grid flex-1 content-center gap-3">
+          <div className="stage-answer-grid mt-5 grid flex-1 content-center gap-3">
             {answerTexts &&
               (["A", "B", "C", "D"] as const).map((option) => (
                 <div key={option} className={revealed && option === question?.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>

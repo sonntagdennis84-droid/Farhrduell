@@ -54,3 +54,123 @@ select {
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 38px 38px;
 }
+
+.adaptive-shell {
+  --stage-gap: clamp(0.85rem, 1.2vw, 1.75rem);
+  --stage-panel-pad: clamp(1rem, 1.35vw, 2rem);
+  --stage-question-size: clamp(2.35rem, 3.4vw, 5.8rem);
+  --stage-body-size: clamp(1rem, 1.05vw, 1.55rem);
+  --stage-answer-size: clamp(1.5rem, 2vw, 3.25rem);
+  --stage-answer-min: clamp(8.5rem, 14vh, 18rem);
+  --stage-timer-size: clamp(7rem, 8vw, 13rem);
+  --stage-media-height: clamp(18rem, 42vh, 58rem);
+}
+
+.adaptive-smartphone {
+  --stage-gap: 0.85rem;
+  --stage-panel-pad: 1rem;
+  --stage-question-size: clamp(1.7rem, 8vw, 2.5rem);
+  --stage-body-size: 1rem;
+  --stage-answer-size: clamp(1.15rem, 5.2vw, 1.8rem);
+  --stage-answer-min: clamp(7.25rem, 19svh, 10rem);
+  --stage-timer-size: clamp(4.75rem, 20vw, 6.25rem);
+  --stage-media-height: 34svh;
+}
+
+.adaptive-tablet {
+  --stage-question-size: clamp(2.15rem, 5vw, 4rem);
+  --stage-answer-size: clamp(1.45rem, 3vw, 2.2rem);
+  --stage-answer-min: clamp(8rem, 16vh, 12rem);
+  --stage-media-height: 40svh;
+}
+
+.adaptive-stage {
+  --stage-question-size: clamp(3.2rem, 4.7vw, 7rem);
+  --stage-body-size: clamp(1.35rem, 1.35vw, 2rem);
+  --stage-answer-size: clamp(2rem, 2.45vw, 4rem);
+  --stage-answer-min: clamp(10rem, 17vh, 21rem);
+  --stage-timer-size: clamp(9rem, 9.5vw, 15rem);
+  --stage-media-height: clamp(23rem, 48vh, 64rem);
+}
+
+.stage-panel {
+  padding: var(--stage-panel-pad);
+}
+
+.stage-question-title {
+  font-size: var(--stage-question-size);
+  line-height: 1.04;
+}
+
+.stage-body-text {
+  font-size: var(--stage-body-size);
+}
+
+.stage-answer-grid {
+  gap: var(--stage-gap);
+}
+
+.stage-answer-button {
+  min-height: var(--stage-answer-min) !important;
+  gap: clamp(0.9rem, 1.4vw, 2rem);
+}
+
+.stage-answer-option {
+  height: clamp(4rem, 5.2vw, 8rem) !important;
+  width: clamp(4rem, 5.2vw, 8rem) !important;
+  font-size: clamp(2rem, 3.3vw, 5rem) !important;
+}
+
+.stage-answer-text {
+  font-size: var(--stage-answer-size) !important;
+}
+
+.stage-timer {
+  height: var(--stage-timer-size) !important;
+  width: var(--stage-timer-size) !important;
+  font-size: clamp(2rem, 3vw, 5rem) !important;
+}
+
+.stage-timer-inner {
+  height: calc(var(--stage-timer-size) * 0.74) !important;
+  width: calc(var(--stage-timer-size) * 0.74) !important;
+}
+
+.stage-media-frame {
+  container-type: inline-size;
+}
+
+.stage-media-asset {
+  max-height: var(--stage-media-height) !important;
+  object-fit: contain;
+  object-position: center;
+}
+
+.adaptive-stage .stage-chrome-secondary {
+  opacity: 0.74;
+}
+
+.adaptive-smartphone .stage-answer-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.adaptive-tablet .remote-heatmap-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.adaptive-tablet .remote-shell,
+.adaptive-notebook .remote-shell {
+  max-width: 48rem;
+}
+
+.adaptive-stage .winner-podium-title {
+  font-size: clamp(3rem, 5vw, 7rem);
+}
+
+.adaptive-stage .winner-podium-card {
+  min-height: clamp(18rem, 35vh, 34rem);
+}
+
+.adaptive-stage .winner-podium-name {
+  font-size: clamp(2.2rem, 3vw, 4rem);
+}

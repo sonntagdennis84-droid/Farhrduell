@@ -33,7 +33,7 @@ export function AnswerButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center rounded-lg text-left text-white shadow-lg transition",
+        "stage-answer-button flex w-full items-center rounded-lg text-left text-white shadow-lg transition",
         stage ? "min-h-36 gap-6 px-6 py-6" : "min-h-20 gap-4 px-4 py-4",
         colors[option],
         selected && "ring-4 ring-white",
@@ -41,8 +41,8 @@ export function AnswerButton({
         className
       )}
     >
-      <span className={cn("grid shrink-0 place-items-center rounded border border-white/40 bg-black/20 font-black", stage ? "h-24 w-24 text-6xl" : "h-10 w-10 text-xl")}>{option}</span>
-      <span className={cn("font-bold leading-snug", stage ? "text-3xl" : "text-lg")}>{text}</span>
+      <span className={cn("stage-answer-option grid shrink-0 place-items-center rounded border border-white/40 bg-black/20 font-black", stage ? "h-24 w-24 text-6xl" : "h-10 w-10 text-xl")}>{option}</span>
+      <span className={cn("stage-answer-text font-bold leading-snug", stage ? "text-3xl" : "text-lg")}>{text}</span>
     </button>
   );
 }

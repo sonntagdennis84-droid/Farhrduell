@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { LeaderboardRow } from "@/types/domain";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
+import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { cn } from "@/lib/utils";
 
 const podiumConfig = {
@@ -17,13 +18,13 @@ function PodiumPlace({ row }: { row: LeaderboardRow }) {
   if (!config) return null;
 
   return (
-    <div className={cn("flex flex-col justify-end rounded-lg border bg-gradient-to-b p-5 text-center shadow-2xl transition duration-700 animate-in fade-in slide-in-from-bottom-6", config.tone, config.height, config.order)}>
+    <div className={cn("winner-podium-card flex flex-col justify-end rounded-lg border bg-gradient-to-b p-5 text-center shadow-2xl transition duration-700 animate-in fade-in slide-in-from-bottom-6", config.tone, config.height, config.order)}>
       <div className="mx-auto">
         <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size={config.avatar} priority={row.rank === 1} />
       </div>
       <div className="mt-4 text-5xl">{config.medal}</div>
       <div className="mt-2 text-6xl font-black text-show-gold">{row.rank === 1 ? "👑" : `#${config.label}`}</div>
-      <div className="mt-3 text-3xl font-black text-white">{row.displayName}</div>
+      <div className="winner-podium-name mt-3 text-3xl font-black text-white">{row.displayName}</div>
       <div className="mt-2 text-2xl font-black text-show-gold">{row.totalPoints} Punkte</div>
       <div className="mt-1 text-sm font-semibold text-white/60">{row.correctAnswers} richtig</div>
     </div>
@@ -32,6 +33,7 @@ function PodiumPlace({ row }: { row: LeaderboardRow }) {
 
 export function WinnerPodium({ rows }: { rows: LeaderboardRow[] }) {
   const { playSound } = useFahrduellSound("results");
+  const adaptive = useAdaptiveStage("fahrduell-results-stage-mode");
   const topRows = rows.slice(0, 3);
   const ordered = [topRows.find((row) => row.rank === 2), topRows.find((row) => row.rank === 1), topRows.find((row) => row.rank === 3)].filter(Boolean) as LeaderboardRow[];
 
@@ -40,9 +42,9 @@ export function WinnerPodium({ rows }: { rows: LeaderboardRow[] }) {
   }, [playSound]);
 
   return (
-    <section className="relative overflow-hidden rounded-lg border border-show-gold/30 bg-show-panel/90 p-5 shadow-glow">
+    <section className={cn("relative overflow-hidden rounded-lg border border-show-gold/30 bg-show-panel/90 p-5 shadow-glow", adaptive.className)}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 42 }).map((_, index) => (
+        {Array.from({ length: adaptive.stageActive ? 70 : 42 }).map((_, index) => (
           <span
             className="absolute h-2 w-2 animate-bounce rounded-sm bg-show-gold opacity-80"
             key={index}
@@ -57,9 +59,16 @@ export function WinnerPodium({ rows }: { rows: LeaderboardRow[] }) {
         ))}
       </div>
       <div className="relative">
-        <p className="text-sm font-black uppercase text-show-gold">Siegerpodium</p>
-        <h2 className="mt-2 text-4xl font-black text-white">Glückwunsch!</h2>
-        <p className="mt-1 text-white/65">Hier sind die Gewinner.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-black uppercase text-show-gold">Siegerpodium</p>
+            <h2 className="winner-podium-title mt-2 text-4xl font-black text-white">Glückwunsch!</h2>
+            <p className="mt-1 text-white/65">Hier sind die Gewinner.</p>
+          </div>
+          <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-4 py-2 text-sm font-black text-show-navy" : "rounded border border-white/15 px-4 py-2 text-sm font-black text-white/75"} onClick={adaptive.toggleStage} type="button">
+            Stage Mode
+          </button>
+        </div>
         <div className="mt-8 grid items-end gap-4 md:grid-cols-3">
           {ordered.length > 0 ? ordered.map((row) => <PodiumPlace key={row.id} row={row} />) : <p className="text-white/60">Noch keine Teilnehmer im Ergebnis.</p>}
         </div>

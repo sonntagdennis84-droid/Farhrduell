@@ -11,8 +11,10 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
+import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
+import { cn } from "@/lib/utils";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
@@ -21,15 +23,15 @@ function QuestionMedia({ question, large = false }: { question: Question; large?
   const frameClass = large ? "mt-6 max-h-[46vh]" : "mt-4 max-h-72";
 
   return (
-    <figure className="overflow-hidden rounded-lg border border-white/10 bg-black/25">
+    <figure className="stage-media-frame overflow-hidden rounded-lg border border-white/10 bg-black/25">
       {question.mediaType === "video" ? (
-        <video className={`${frameClass} w-full object-contain`} src={question.mediaUrl} controls muted playsInline />
+        <video className={`${frameClass} stage-media-asset w-full object-contain`} src={question.mediaUrl} controls muted playsInline />
       ) : question.mediaType === "audio" ? (
         <div className="px-6 py-8">
           <audio className="w-full" src={question.mediaUrl} controls preload="metadata" />
         </div>
       ) : (
-        <img className={`${frameClass} w-full object-contain`} src={question.mediaUrl} alt={question.mediaAlt || question.questionText} />
+        <img className={`${frameClass} stage-media-asset w-full object-contain`} src={question.mediaUrl} alt={question.mediaAlt || question.questionText} />
       )}
       {question.mediaCaption && <figcaption className="border-t border-white/10 px-4 py-2 text-sm font-semibold text-white/70">{question.mediaCaption}</figcaption>}
     </figure>
@@ -90,6 +92,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const explanationVisible = isExplanationVisible(session.status);
   const scoreboardVisible = isLeaderboardVisible(session.status);
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("host");
+  const adaptive = useAdaptiveStage("fahrduell-host-stage-mode");
   const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
@@ -187,18 +190,21 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   if (scoreboardVisible) {
     const topThree = leaderboard.slice(0, 3);
     return (
-      <div className="space-y-6">
-        <section className="rounded-lg border border-show-gold/50 bg-show-panel/95 p-6 shadow-glow">
+      <div className={cn("space-y-6", adaptive.className)}>
+        <section className="stage-panel rounded-lg border border-show-gold/50 bg-show-panel/95 p-6 shadow-glow">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="text-sm font-black uppercase text-show-gold">Zwischenstand</div>
-              <h1 className="mt-2 text-5xl font-black leading-tight">Aktueller Punktestand</h1>
+              <h1 className="stage-question-title mt-2 text-5xl font-black leading-tight">Aktueller Punktestand</h1>
               <p className="mt-2 text-white/70">
                 Nach Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
+              <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-5 py-3 font-bold text-show-navy" : "rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold"} onClick={adaptive.toggleStage} type="button">
+                Stage Mode
+              </button>
               <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("reveal")}>
                 Zur Auflösung
               </button>
@@ -240,8 +246,8 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   }
 
   return (
-    <div>
-      <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6">
+    <div className={adaptive.className}>
+      <section className="stage-panel rounded-lg border border-white/10 bg-show-panel/90 p-6">
         {activeWelcome && (
           <div className="mb-5 rounded-lg border border-show-gold/40 bg-show-gold/12 px-5 py-4 shadow-glow">
             <p className="text-sm font-black uppercase text-show-gold">Neuer Teilnehmer</p>
@@ -259,20 +265,23 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
                 <span className="rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">{activeParticipantCount} aktiv</span>
               )}
             </div>
-            <h1 className="mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
+            <h1 className="stage-question-title mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
             <p className="mt-3 inline-flex rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">
               {active ? "Antwortphase läuft" : locked ? "Antworten gesperrt" : revealed ? "Auflösung" : "Bereit"}
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
             <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
+            <button className={adaptive.manualStage ? "stage-chrome-secondary rounded border border-show-gold bg-show-gold px-4 py-2 text-sm font-black text-show-navy" : "stage-chrome-secondary rounded border border-white/20 px-4 py-2 text-sm font-black hover:border-show-gold hover:text-show-gold"} onClick={adaptive.toggleStage} type="button">
+              Stage Mode
+            </button>
             <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
           </div>
         </div>
 
         <QuestionMedia question={question} large />
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="stage-answer-grid mt-8 grid gap-4 md:grid-cols-2">
           {answerTexts &&
             (["A", "B", "C", "D"] as const).map((option) => (
               <div key={option} className={revealed && option === question.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>

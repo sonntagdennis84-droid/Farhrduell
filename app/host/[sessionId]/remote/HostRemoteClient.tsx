@@ -10,8 +10,10 @@ import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
+import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
+import { cn } from "@/lib/utils";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
@@ -62,6 +64,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
   const haptic = useHapticFeedback();
+  const adaptive = useAdaptiveStage("fahrduell-remote-stage-mode");
 
   const groupedAnswers = useMemo(() => {
     const groups = {
@@ -164,8 +167,8 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   }
 
   return (
-    <main className="show-grid safe-screen min-h-screen" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
-      <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col pb-4">
+    <main className={cn("show-grid safe-screen min-h-screen overflow-x-hidden", adaptive.className)} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+      <div className="remote-shell mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col pb-4">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
           <a className="rounded border border-white/15 px-3 py-2 text-sm font-bold text-white/75" href={`/host/${session.id}`}>
@@ -173,7 +176,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
           </a>
         </header>
 
-        <section className="mt-4 rounded-lg border border-white/10 bg-show-panel/95 p-4 shadow-2xl">
+        <section className="stage-panel mt-4 rounded-lg border border-white/10 bg-show-panel/95 p-4 shadow-2xl">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase text-show-gold">Moderator-App</p>
@@ -181,6 +184,9 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             </div>
             <div className="flex items-center gap-2">
               <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
+              <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-3 py-2 text-sm font-black text-show-navy" : "rounded border border-white/15 px-3 py-2 text-sm font-black text-white/75"} onClick={adaptive.toggleStage} type="button">
+                Stage
+              </button>
               <span className="rounded border border-show-gold/40 bg-show-gold/10 px-3 py-2 text-sm font-black text-show-gold">{statusLabel[session.status] ?? session.status}</span>
             </div>
           </div>
@@ -195,7 +201,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             <p className="text-xs font-black uppercase text-white/45">
               Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
             </p>
-            <p className="mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
+            <p className="stage-body-text mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded border border-show-gold/30 bg-show-gold/10 px-2 py-1 text-xs font-black uppercase text-show-gold">{gameModeLabel(session.gameMode)}</span>
               {isEliminationGameMode(session.gameMode) && <span className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-black uppercase text-white/70">{activeParticipantCount} aktiv</span>}
@@ -210,7 +216,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
               <h2 className="text-sm font-black uppercase text-show-gold">Live-Antworten</h2>
               <span className="text-xs font-bold text-white/50">{heatmap.participants.length} Teilnehmer</span>
             </div>
-            <div className="mt-3 grid gap-3">
+            <div className="remote-heatmap-grid mt-3 grid gap-3">
               {[
                 { key: "A", title: "A", chipClass: "border-sky-400/40 bg-sky-400/10 text-sky-300" },
                 { key: "B", title: "B", chipClass: "border-orange-400/40 bg-orange-400/10 text-orange-300" },
