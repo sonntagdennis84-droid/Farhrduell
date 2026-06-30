@@ -17,6 +17,7 @@ function remainingSeconds(session: GameSession, question: Question) {
 
 export function PlayClient({ participant, session, quiz }: { participant: Participant; session: GameSession; quiz: Quiz }) {
   const [currentSession, setCurrentSession] = useState(session);
+  const [currentParticipant, setCurrentParticipant] = useState(participant);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [selected, setSelected] = useState<AnswerOption | null>(null);
   const [message, setMessage] = useState("Warte auf den Start.");
@@ -25,6 +26,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   const active = currentSession.status === "QUESTION_ACTIVE";
   const locked = isAnswerLocked(currentSession.status);
   const revealed = isAnswerRevealed(currentSession.status);
+  const eliminated = Boolean(currentParticipant.isEliminated);
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -41,12 +43,16 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
     socket.on("disconnect", () => setConnected(false));
     socket.on("question_started", (bundle) => {
       setCurrentSession(bundle.session);
+      const updatedParticipant = bundle.participants?.find((item: Participant) => item.id === participant.id);
+      if (updatedParticipant) setCurrentParticipant(updatedParticipant);
       setSelected(null);
       setMessage("");
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("session_updated", (bundle) => {
       setCurrentSession(bundle.session);
+      const updatedParticipant = bundle.participants?.find((item: Participant) => item.id === participant.id);
+      if (updatedParticipant) setCurrentParticipant(updatedParticipant);
       if (bundle.session.status === "ANSWER_LOCKED") setMessage("Antworten sind gesperrt.");
       if (bundle.session.status === "ANSWER_REVEALED") setMessage("Frage aufgelöst.");
       if (bundle.session.status === "EXPLANATION_VISIBLE") setMessage("Erklärung eingeblendet.");
@@ -58,6 +64,8 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
     });
     socket.on("question_revealed", (bundle) => {
       setCurrentSession(bundle.session);
+      const updatedParticipant = bundle.participants?.find((item: Participant) => item.id === participant.id);
+      if (updatedParticipant) setCurrentParticipant(updatedParticipant);
       setMessage("Frage aufgelöst.");
     });
     socket.on("quiz_finished", () => {
@@ -76,7 +84,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   }, [active, currentSession, question]);
 
   async function answer(option: AnswerOption) {
-    if (selected || !active) return;
+    if (selected || !active || eliminated) return;
     setSelected(option);
     setMessage("Antwort gespeichert.");
     const response = await fetch("/api/answers", {
@@ -93,12 +101,13 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
           <div className="flex items-center gap-3 text-right">
-            <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
+            <ParticipantAvatar avatarId={currentParticipant.avatarId} emoji={currentParticipant.emoji} label={currentParticipant.displayName} size="sm" />
             <div>
-              <p className="text-sm font-black text-show-gold">{participant.displayName}</p>
+              <p className="text-sm font-black text-show-gold">{currentParticipant.displayName}</p>
               <p className={connected ? "text-xs font-bold text-show-green" : "text-xs font-bold text-show-red"}>
                 {connected ? "Verbunden" : "Verbindung wird wiederhergestellt"}
               </p>
+              {Number(currentParticipant.livesRemaining ?? 0) > 0 && <p className="text-xs font-black text-show-gold">♥ {currentParticipant.livesRemaining}</p>}
             </div>
           </div>
         </header>
@@ -124,7 +133,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
                     option={option}
                     text=""
                     selected={selected === option}
-                    disabled={!active || !!selected}
+                    disabled={!active || !!selected || eliminated}
                     className="min-h-[7.5rem] justify-center rounded-lg px-4 py-4 [&>span:last-child]:hidden"
                     onClick={() => answer(option)}
                   />
@@ -134,6 +143,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
 
           <div className="mt-4 min-h-7 text-center">
             {message && <p className="font-black text-show-gold">{message}</p>}
+            {eliminated && <p className="font-black text-show-red">Du bist ausgeschieden und kannst weiter zuschauen.</p>}
             {!active && !locked && <p className="text-sm font-semibold text-white/60">Warte auf die nächste Frage.</p>}
           </div>
         </section>

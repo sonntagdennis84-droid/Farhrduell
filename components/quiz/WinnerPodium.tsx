@@ -22,7 +22,7 @@ function PodiumPlace({ row }: { row: LeaderboardRow }) {
         <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size={config.avatar} priority={row.rank === 1} />
       </div>
       <div className="mt-4 text-5xl">{config.medal}</div>
-      <div className="mt-2 text-6xl font-black text-show-gold">#{config.label}</div>
+      <div className="mt-2 text-6xl font-black text-show-gold">{row.rank === 1 ? "👑" : `#${config.label}`}</div>
       <div className="mt-3 text-3xl font-black text-white">{row.displayName}</div>
       <div className="mt-2 text-2xl font-black text-show-gold">{row.totalPoints} Punkte</div>
       <div className="mt-1 text-sm font-semibold text-white/60">{row.correctAnswers} richtig</div>

@@ -1,5 +1,6 @@
 export type Role = "ADMIN" | "INSTRUCTOR";
 export type AnswerOption = "A" | "B" | "C" | "D";
+export type GameMode = "classic" | "team_battle" | "knockout" | "survival";
 export type SessionStatus =
   | "LOBBY"
   | "RUNNING"
@@ -69,6 +70,7 @@ export type GameSession = {
   quizId: string;
   joinCode: string;
   status: SessionStatus;
+  gameMode?: GameMode | string;
   currentQuestionIndex: number;
   currentQuestionStartedAt?: string | null;
   enableJokers?: boolean;
@@ -79,12 +81,26 @@ export type GameSession = {
   createdAt: string;
 };
 
+export type Team = {
+  id: string;
+  sessionId: string;
+  name: string;
+  color?: string | null;
+  totalPoints: number;
+  createdAt: string;
+};
+
 export type Participant = {
   id: string;
   sessionId: string;
+  teamId?: string | null;
+  team?: Team | null;
   displayName: string;
   avatarId?: number | null;
   emoji?: string | null;
+  livesRemaining?: number;
+  isEliminated?: boolean;
+  eliminatedAtQuestionIndex?: number | null;
   totalPoints: number;
   joinedAt: string;
   lastSeenAt?: string | null;
@@ -118,11 +134,20 @@ export type LeaderboardRow = Participant & {
   averageResponseTimeMs: number;
 };
 
+export type TeamLeaderboardRow = Team & {
+  rank: number;
+  participantCount: number;
+};
+
 export type LiveAnswerHeatmapParticipant = {
   id: string;
   displayName: string;
+  teamId?: string | null;
+  team?: Team | null;
   avatarId?: number | null;
   emoji?: string | null;
+  livesRemaining?: number;
+  isEliminated?: boolean;
   selectedAnswer: AnswerOption | null;
   hasAnswered: boolean;
   answeredAt?: string | null;

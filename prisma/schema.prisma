@@ -106,6 +106,7 @@ model GameSession {
   quiz                 Quiz          @relation(fields: [quizId], references: [id])
   joinCode             String        @unique
   status               SessionStatus @default(LOBBY)
+  gameMode             String        @default("classic")
   currentQuestionIndex Int           @default(0)
   currentQuestionStartedAt DateTime?
   enableJokers         Boolean       @default(false)
@@ -128,6 +129,9 @@ model Participant {
   team        Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
   displayName String
   avatarId    Int         @default(1)
+  livesRemaining Int      @default(0)
+  isEliminated Boolean    @default(false)
+  eliminatedAtQuestionIndex Int?
   emoji       String      @default("🚗")
   totalPoints Int         @default(0)
   joinedAt    DateTime    @default(now())

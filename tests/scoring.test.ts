@@ -43,6 +43,12 @@ describe("scoring", () => {
     expect(rows[0].rank).toBe(1);
   });
 
+  it("keeps true ties on the same rank", () => {
+    const rows = buildLeaderboard([participant("a", "Ada"), participant("b", "Ben")], [answer("a", "q1", 900, true, 1000), answer("b", "q1", 900, true, 1000)]);
+    expect(rows[0].rank).toBe(1);
+    expect(rows[1].rank).toBe(1);
+  });
+
   it("prepares CSV export columns", () => {
     const rows = buildLeaderboard([participant("a", "Ada")], [answer("a", "q1", 875)]);
     expect(resultsToCsv(rows).split("\n")[0]).toContain("Richtige Antworten");

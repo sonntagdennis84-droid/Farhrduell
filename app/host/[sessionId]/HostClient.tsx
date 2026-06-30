@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, Participant, Question, Quiz } from "@/types/domain";
+import type { GameSession, LeaderboardRow, Participant, Question, Quiz, TeamLeaderboardRow } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Leaderboard } from "@/components/quiz/Leaderboard";
+import { TeamLeaderboard } from "@/components/quiz/TeamLeaderboard";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
+import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
-type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
+type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
 function QuestionMedia({ question, large = false }: { question: Question; large?: boolean }) {
   if (!question.mediaUrl || question.mediaType === "none") return null;
@@ -74,7 +76,9 @@ function remainingSeconds(session: GameSession, question: Question) {
 
 export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [session, setSession] = useState(initialBundle.session);
+  const [participants, setParticipants] = useState(initialBundle.participants);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
+  const [teamLeaderboard, setTeamLeaderboard] = useState(initialBundle.teamLeaderboard);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [welcomeQueue, setWelcomeQueue] = useState<string[]>([]);
   const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
@@ -86,6 +90,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const explanationVisible = isExplanationVisible(session.status);
   const scoreboardVisible = isLeaderboardVisible(session.status);
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("host");
+  const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -94,14 +99,18 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     socket.emit("host:join", { sessionId: session.id });
     socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
+      setTeamLeaderboard(bundle.teamLeaderboard);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
       countdownWarningPlayedRef.current = null;
       playSound("question-start");
     });
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
+      setTeamLeaderboard(bundle.teamLeaderboard);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
@@ -110,12 +119,16 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     });
     socket.on("question_revealed", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
+      setTeamLeaderboard(bundle.teamLeaderboard);
       playSound("answer-correct");
     });
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
+      setTeamLeaderboard(bundle.teamLeaderboard);
       playSound("winner");
       location.href = `/results/${bundle.session.id}`;
     });
@@ -162,7 +175,9 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       return;
     }
     setSession(bundle.session);
+    setParticipants(bundle.participants);
     setLeaderboard(bundle.leaderboard);
+    setTeamLeaderboard(bundle.teamLeaderboard);
   }
 
   if (!question) {
@@ -194,11 +209,18 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           </div>
         </section>
 
-        {topThree.length > 0 && (
+        {session.gameMode === "team_battle" && teamLeaderboard.length > 0 && (
+          <section className="rounded-lg border border-show-gold/30 bg-show-panel/90 p-5">
+            <h2 className="mb-3 text-xl font-black text-show-gold">Teamwertung</h2>
+            <TeamLeaderboard rows={teamLeaderboard} limit={4} />
+          </section>
+        )}
+
+        {session.gameMode !== "team_battle" && topThree.length > 0 && (
           <section className="grid gap-4 md:grid-cols-3">
             {topThree.map((row) => (
               <div key={row.id} className={row.rank === 1 ? "rounded-lg border border-show-gold bg-show-gold/10 p-6 shadow-glow" : "rounded-lg border border-white/10 bg-show-panel/90 p-6"}>
-                <div className="text-6xl font-black text-show-gold">#{row.rank}</div>
+                <div className="text-6xl font-black text-show-gold">{row.rank === 1 ? "👑" : `#${row.rank}`}</div>
                 <div className="mt-4">
                   <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size={row.rank === 1 ? "xl" : "lg"} />
                 </div>
@@ -230,6 +252,12 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           <div>
             <div className="text-sm font-black uppercase text-show-gold">
               Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded border border-show-gold/30 bg-show-gold/10 px-3 py-1 text-sm font-black uppercase text-show-gold">{gameModeLabel(session.gameMode)}</span>
+              {isEliminationGameMode(session.gameMode) && (
+                <span className="rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">{activeParticipantCount} aktiv</span>
+              )}
             </div>
             <h1 className="mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
             <p className="mt-3 inline-flex rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">

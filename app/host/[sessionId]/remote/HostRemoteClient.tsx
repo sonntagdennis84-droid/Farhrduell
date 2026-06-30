@@ -4,15 +4,16 @@ import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-rea
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, LiveAnswerHeatmapParticipant, Participant, Quiz } from "@/types/domain";
+import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, LiveAnswerHeatmapParticipant, Participant, Quiz, TeamLeaderboardRow } from "@/types/domain";
 import { Logo } from "@/components/ui/Logo";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
+import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
-type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[] };
+type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
 const statusLabel: Record<string, string> = {
   LOBBY: "Lobby",
@@ -44,6 +45,7 @@ function RemoteButton({ icon, label, onClick, tone = "primary" }: { icon: ReactN
 
 export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBundle: Bundle; initialHeatmap: LiveAnswerHeatmap | null }) {
   const [session, setSession] = useState(initialBundle.session);
+  const [participants, setParticipants] = useState(initialBundle.participants);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [heatmap, setHeatmap] = useState<LiveAnswerHeatmap | null>(initialHeatmap);
@@ -57,6 +59,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const explanationVisible = isExplanationVisible(session.status);
   const leaderboardVisible = isLeaderboardVisible(session.status);
   const topRows = useMemo(() => leaderboard.slice(0, 3), [leaderboard]);
+  const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
   const haptic = useHapticFeedback();
 
@@ -80,16 +83,19 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
     socket.emit("host:join", { sessionId: session.id });
     socket.on("question_started", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
       setAllAnswersNotice(false);
       playSound("question-start");
     });
     socket.on("session_updated", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
     });
     socket.on("question_revealed", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
       haptic("success");
     });
@@ -104,6 +110,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
     });
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
       haptic("success");
       playSound("winner");
@@ -130,6 +137,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
       const response = await fetch(`/api/sessions/${session.id}/${path}`, { method: "POST" });
       const bundle = await response.json();
       setSession(bundle.session);
+      setParticipants(bundle.participants);
       setLeaderboard(bundle.leaderboard);
     } finally {
       setBusyAction(null);
@@ -188,6 +196,10 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
               Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
             </p>
             <p className="mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded border border-show-gold/30 bg-show-gold/10 px-2 py-1 text-xs font-black uppercase text-show-gold">{gameModeLabel(session.gameMode)}</span>
+              {isEliminationGameMode(session.gameMode) && <span className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-black uppercase text-white/70">{activeParticipantCount} aktiv</span>}
+            </div>
             {question?.hint && <p className="mt-3 rounded border border-white/10 bg-white/5 p-3 text-sm font-semibold text-white/70">Tipp: {question.hint}</p>}
           </div>
         </section>
@@ -222,6 +234,8 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
                           <span key={`${group.key}-${participant.id}`} className={`inline-flex items-center gap-2 rounded border px-2 py-1 text-sm font-bold ${group.chipClass}`}>
                             <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
                             {participant.displayName}
+                            {participant.isEliminated && <span className="text-show-red">K.O.</span>}
+                            {Number(participant.livesRemaining ?? 0) > 0 && <span className="text-show-gold">♥ {participant.livesRemaining}</span>}
                           </span>
                         ))
                       )}
@@ -239,7 +253,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             {topRows.length === 0 && <p className="text-sm font-semibold text-white/55">Noch keine Punkte.</p>}
             {topRows.map((row) => (
               <div key={row.id} className="grid grid-cols-[2.5rem_3rem_1fr_auto] items-center rounded border border-white/10 bg-white/5 px-3 py-2 transition duration-300">
-                <span className="font-black text-show-gold">#{row.rank}</span>
+                <span className="font-black text-show-gold">{row.rank === 1 ? "👑" : `#${row.rank}`}</span>
                 <ParticipantAvatar avatarId={row.avatarId} emoji={row.emoji} label={row.displayName} size="sm" />
                 <span className="font-bold">{row.displayName}</span>
                 <span className="font-black text-show-gold">{row.totalPoints}</span>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Quiz, QuizCategory } from "@/types/domain";
+import type { GameMode, Quiz, QuizCategory } from "@/types/domain";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Panel } from "@/components/ui/Panel";
@@ -28,6 +28,8 @@ export default function QuizzesPage() {
   const [search, setSearch] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [gameMode, setGameMode] = useState<GameMode>("classic");
+  const [teamCount, setTeamCount] = useState(2);
   const [busyQuizId, setBusyQuizId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -73,7 +75,7 @@ export default function QuizzesPage() {
     const response = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quizId: quiz.id })
+      body: JSON.stringify({ quizId: quiz.id, gameMode, teamCount })
     });
     if (response.status === 401) {
       router.push("/login?next=/quizzes");
@@ -253,6 +255,33 @@ export default function QuizzesPage() {
                 <p className="text-xs font-black uppercase text-white/45">Medien</p>
                 <p className="mt-1 font-black">{hasMedia(previewQuiz) ? "Ja" : "Nein"}</p>
               </div>
+            </div>
+            <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-black uppercase text-show-gold">Spielmodus</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {[
+                  { value: "classic", label: "Classic", text: "Normales Quiz mit Einzelwertung." },
+                  { value: "team_battle", label: "Team Battle", text: "Teilnehmer werden automatisch Teams zugeordnet." },
+                  { value: "knockout", label: "K.O.-Modus", text: "Falsche oder fehlende Antwort scheidet aus." },
+                  { value: "survival", label: "Überleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
+                ].map((mode) => (
+                  <button
+                    key={mode.value}
+                    className={gameMode === mode.value ? "rounded border border-show-gold bg-show-gold/15 p-3 text-left shadow-glow" : "rounded border border-white/10 bg-white/5 p-3 text-left hover:border-show-gold/60"}
+                    onClick={() => setGameMode(mode.value as GameMode)}
+                    type="button"
+                  >
+                    <span className="font-black text-show-gold">{mode.label}</span>
+                    <span className="mt-1 block text-sm font-semibold text-white/65">{mode.text}</span>
+                  </button>
+                ))}
+              </div>
+              {gameMode === "team_battle" && (
+                <label className="mt-4 block text-sm font-bold text-white/70">
+                  Anzahl Teams
+                  <input className="mt-2 w-32 rounded border border-white/15 bg-white/10 px-3 py-2 font-black text-white" min={2} max={4} type="number" value={teamCount} onChange={(event) => setTeamCount(Number(event.target.value))} />
+                </label>
+              )}
             </div>
             <div className="mt-5 space-y-2">
               {previewQuiz.questions.slice(0, 8).map((question, index) => (

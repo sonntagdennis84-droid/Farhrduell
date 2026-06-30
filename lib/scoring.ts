@@ -8,7 +8,7 @@ export function calculatePoints(isCorrect: boolean, remainingTimeMs: number, tot
 }
 
 export function buildLeaderboard(participants: Participant[], answers: Answer[]): LeaderboardRow[] {
-  return participants
+  const sortedRows = participants
     .map((participant) => {
       const ownAnswers = answers.filter((answer) => answer.participantId === participant.id);
       const correctAnswers = ownAnswers.filter((answer) => answer.isCorrect).length;
@@ -24,6 +24,18 @@ export function buildLeaderboard(participants: Participant[], answers: Answer[])
         averageResponseTimeMs
       };
     })
-    .sort((a, b) => b.totalPoints - a.totalPoints || a.averageResponseTimeMs - b.averageResponseTimeMs)
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.correctAnswers - a.correctAnswers || a.averageResponseTimeMs - b.averageResponseTimeMs);
+
+  let previousRank = 0;
+  return sortedRows.map((row, index) => {
+    const previous = sortedRows[index - 1];
+    const tiedWithPrevious =
+      previous &&
+      previous.totalPoints === row.totalPoints &&
+      previous.correctAnswers === row.correctAnswers &&
+      previous.averageResponseTimeMs === row.averageResponseTimeMs;
+    const rank = tiedWithPrevious ? previousRank : index + 1;
+    previousRank = rank;
+    return { ...row, rank };
+  });
 }

@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import type { Answer, AnswerOption, GameSession, LiveAnswerHeatmap, Participant, Question, Quiz, QuizCategory } from "@/types/domain";
+import type { Answer, AnswerOption, GameSession, LiveAnswerHeatmap, Participant, Question, Quiz, QuizCategory, Team, TeamLeaderboardRow } from "@/types/domain";
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
 import { canSubmitAnswer } from "@/lib/session-state";
 import { getCurrentUserId } from "@/features/auth/session";
 import { defaultParticipantEmoji, isAllowedParticipantEmoji } from "@/lib/participant-emojis";
 import { defaultAvatarId, normalizeAvatarId } from "@/lib/participant-avatars";
+import { activeModeParticipants, isEliminationGameMode, nextEliminationState, normalizeGameMode, survivalStartingLives } from "@/lib/game-modes";
 
 type QuizInput = Omit<Partial<Quiz>, "questions"> & {
   title: string;
@@ -59,6 +60,7 @@ function toSession(session: any): GameSession {
   return {
     ...session,
     status: session.status,
+    gameMode: session.gameMode ?? "classic",
     currentQuestionStartedAt: iso(session.currentQuestionStartedAt),
     startedAt: iso(session.startedAt),
     finishedAt: iso(session.finishedAt),
@@ -66,14 +68,44 @@ function toSession(session: any): GameSession {
   };
 }
 
+function toTeam(team: any): Team {
+  return {
+    ...team,
+    createdAt: iso(team.createdAt) ?? new Date().toISOString()
+  };
+}
+
 function toParticipant(participant: any): Participant {
   return {
     ...participant,
+    team: participant.team ? toTeam(participant.team) : null,
     avatarId: normalizeAvatarId(participant.avatarId ?? defaultAvatarId),
     emoji: participant.emoji ?? defaultParticipantEmoji,
+    livesRemaining: Number(participant.livesRemaining ?? 0),
+    isEliminated: Boolean(participant.isEliminated),
+    eliminatedAtQuestionIndex: participant.eliminatedAtQuestionIndex ?? null,
     joinedAt: iso(participant.joinedAt) ?? new Date().toISOString(),
     lastSeenAt: iso(participant.lastSeenAt)
   };
+}
+
+function buildTeamLeaderboard(teams: Team[], participants: Participant[]): TeamLeaderboardRow[] {
+  const participantCounts = new Map<string, number>();
+  for (const participant of participants) {
+    if (participant.teamId) participantCounts.set(participant.teamId, (participantCounts.get(participant.teamId) ?? 0) + 1);
+  }
+  const sortedTeams = [...teams].sort((a, b) => b.totalPoints - a.totalPoints || a.createdAt.localeCompare(b.createdAt));
+  let previousRank = 0;
+  return sortedTeams.map((team, index) => {
+    const previous = sortedTeams[index - 1];
+    const rank = previous && previous.totalPoints === team.totalPoints ? previousRank : index + 1;
+    previousRank = rank;
+    return {
+      ...team,
+      rank,
+      participantCount: participantCounts.get(team.id) ?? 0
+    };
+  });
 }
 
 function toAnswer(answer: any): Answer {
@@ -357,17 +389,34 @@ function makeJoinCode() {
   return randomBytes(5).toString("base64url").replace(/[^A-Z0-9]/gi, "").slice(0, 8).toUpperCase();
 }
 
-export async function createSession(quizId: string) {
+const defaultBattleTeams = [
+  { name: "Team Gelb", color: "#FACC15" },
+  { name: "Team Blau", color: "#2563EB" },
+  { name: "Team Grün", color: "#10B981" },
+  { name: "Team Rot", color: "#EF4444" }
+];
+
+export async function createSession(quizId: string, options?: { gameMode?: string; teamCount?: number }) {
   const prisma = await getPrisma();
   const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
   if (!quiz || quiz.isArchived) return null;
+  const gameMode = normalizeGameMode(options?.gameMode);
   let joinCode = makeJoinCode();
   while (!joinCode || (await prisma.gameSession.findUnique({ where: { joinCode } }))) {
     joinCode = makeJoinCode();
   }
 
   const session = await prisma.gameSession.create({
-    data: { quizId, joinCode }
+    data: {
+      quizId,
+      joinCode,
+      gameMode,
+      teams: gameMode === "team_battle"
+        ? {
+            create: defaultBattleTeams.slice(0, Math.min(Math.max(Number(options?.teamCount ?? 2), 2), 4))
+          }
+        : undefined
+    }
   });
   return toSession(session);
 }
@@ -399,7 +448,8 @@ export async function getSessionBundle(sessionId: string) {
     where: { id: sessionId },
     include: {
       quiz: { include: { questions: { orderBy: { orderIndex: "asc" } } } },
-      participants: { orderBy: { joinedAt: "asc" } },
+      participants: { orderBy: { joinedAt: "asc" }, include: { team: true } },
+      teams: { orderBy: { createdAt: "asc" } },
       answers: { orderBy: { submittedAt: "asc" } }
     }
   });
@@ -408,8 +458,9 @@ export async function getSessionBundle(sessionId: string) {
   const session = toSession(sessionRecord);
   const quiz = toQuiz(sessionRecord.quiz);
   const participants = sessionRecord.participants.map(toParticipant);
+  const teams = sessionRecord.teams.map(toTeam);
   const answers = sessionRecord.answers.map(toAnswer);
-  return { session, quiz, participants, answers, leaderboard: buildLeaderboard(participants, answers) };
+  return { session, quiz, participants, teams, answers, leaderboard: buildLeaderboard(participants, answers), teamLeaderboard: buildTeamLeaderboard(teams, participants) };
 }
 
 function disambiguateParticipantNames(participants: Participant[]) {
@@ -424,7 +475,17 @@ function disambiguateParticipantNames(participants: Participant[]) {
   });
 }
 
-export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSessionBundle>>): LiveAnswerHeatmap | null {
+type SessionBundle = {
+  session: GameSession;
+  quiz: Quiz;
+  participants: Participant[];
+  teams?: Team[];
+  answers: Answer[];
+  leaderboard: ReturnType<typeof buildLeaderboard>;
+  teamLeaderboard?: TeamLeaderboardRow[];
+};
+
+export function buildLiveAnswerHeatmap(bundle: SessionBundle | null): LiveAnswerHeatmap | null {
   if (!bundle) return null;
   const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
   if (!question) return null;
@@ -441,8 +502,12 @@ export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSess
     return {
       id: participant.id,
       displayName: participant.displayName,
+      teamId: participant.teamId,
+      team: participant.team ?? null,
       avatarId: normalizeAvatarId(participant.avatarId),
       emoji: participant.emoji ?? defaultParticipantEmoji,
+      livesRemaining: participant.livesRemaining,
+      isEliminated: participant.isEliminated,
       selectedAnswer: answer?.selectedAnswer ?? null,
       hasAnswered: Boolean(answer),
       answeredAt: answer?.submittedAt ?? null
@@ -458,19 +523,20 @@ export function buildLiveAnswerHeatmap(bundle: Awaited<ReturnType<typeof getSess
       B: heatmapParticipants.filter((participant) => participant.selectedAnswer === "B").length,
       C: heatmapParticipants.filter((participant) => participant.selectedAnswer === "C").length,
       D: heatmapParticipants.filter((participant) => participant.selectedAnswer === "D").length,
-      pending: heatmapParticipants.filter((participant) => !participant.hasAnswered).length
+      pending: heatmapParticipants.filter((participant) => !participant.isEliminated && !participant.hasAnswered).length
     }
   };
 }
 
-export function allParticipantsAnsweredCurrentQuestion(bundle: Awaited<ReturnType<typeof getSessionBundle>>) {
+export function allParticipantsAnsweredCurrentQuestion(bundle: SessionBundle | null) {
   if (!bundle) return false;
   const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
-  if (!question || bundle.participants.length === 0) return false;
+  const participantsToCheck = activeModeParticipants(bundle.participants, bundle.session.gameMode);
+  if (!question || participantsToCheck.length === 0) return false;
   const answeredParticipantIds = new Set(
     bundle.answers.filter((answer: Answer) => answer.questionId === question.id).map((answer: Answer) => answer.participantId)
   );
-  return bundle.participants.every((participant: Participant) => answeredParticipantIds.has(participant.id));
+  return participantsToCheck.every((participant) => answeredParticipantIds.has(participant.id));
 }
 
 export async function joinSession(joinCode: string, displayName: string, emoji = defaultParticipantEmoji, avatarId = defaultAvatarId) {
@@ -479,14 +545,24 @@ export async function joinSession(joinCode: string, displayName: string, emoji =
   if (!session) return null;
   const safeEmoji = isAllowedParticipantEmoji(emoji) ? emoji : defaultParticipantEmoji;
   const safeAvatarId = normalizeAvatarId(avatarId);
+  const teams = await prisma.team.findMany({
+    where: { sessionId: session.id },
+    include: { participants: { select: { id: true } } },
+    orderBy: { createdAt: "asc" }
+  });
+  const assignedTeam = teams.length > 0 ? [...teams].sort((a: any, b: any) => a.participants.length - b.participants.length || a.createdAt.getTime() - b.createdAt.getTime())[0] : null;
   const participant = await prisma.participant.create({
     data: {
       sessionId: session.id,
+      teamId: assignedTeam?.id ?? null,
       displayName: displayName.trim(),
       avatarId: safeAvatarId,
       emoji: safeEmoji,
+      livesRemaining: session.gameMode === "survival" ? survivalStartingLives : 0,
+      isEliminated: false,
       lastSeenAt: new Date()
-    }
+    },
+    include: { team: true }
   });
   return { session, participant: toParticipant(participant) };
 }
@@ -510,8 +586,62 @@ export async function revealQuestion(sessionId: string) {
   return getSessionBundle(sessionId);
 }
 
+async function applyEliminationPenalty(prisma: any, participant: Participant, bundle: Awaited<ReturnType<typeof getSessionBundle>>, isCorrect: boolean) {
+  if (!bundle || !isEliminationGameMode(bundle.session.gameMode)) return;
+  const nextState = nextEliminationState({
+    mode: bundle.session.gameMode,
+    livesRemaining: participant.livesRemaining,
+    isEliminated: participant.isEliminated,
+    isCorrect,
+    questionIndex: bundle.session.currentQuestionIndex
+  });
+
+  if (nextState.livesRemaining === Number(participant.livesRemaining ?? 0) && nextState.isEliminated === Boolean(participant.isEliminated)) return;
+
+  await prisma.participant.update({
+    where: { id: participant.id },
+    data: {
+      livesRemaining: nextState.livesRemaining,
+      isEliminated: nextState.isEliminated,
+      eliminatedAtQuestionIndex: nextState.isEliminated ? nextState.eliminatedAtQuestionIndex : participant.eliminatedAtQuestionIndex ?? null
+    }
+  });
+}
+
+async function applyMissingAnswerPenalties(sessionId: string) {
+  const prisma = await getPrisma();
+  const bundle = await getSessionBundle(sessionId);
+  if (!bundle || !isEliminationGameMode(bundle.session.gameMode)) return bundle;
+  const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
+  if (!question) return bundle;
+  const answeredParticipantIds = new Set(bundle.answers.filter((answer: Answer) => answer.questionId === question.id).map((answer: Answer) => answer.participantId));
+  const missedParticipants = bundle.participants.filter((participant: Participant) => !participant.isEliminated && !answeredParticipantIds.has(participant.id));
+  for (const participant of missedParticipants) {
+    await applyEliminationPenalty(prisma, participant, bundle, false);
+  }
+  return getSessionBundle(sessionId);
+}
+
+async function finishEliminationSessionIfDecided(sessionId: string) {
+  const prisma = await getPrisma();
+  const bundle = await getSessionBundle(sessionId);
+  if (!bundle || !isEliminationGameMode(bundle.session.gameMode) || bundle.session.status === "FINISHED") return false;
+  const activeCount = activeModeParticipants(bundle.participants, bundle.session.gameMode).length;
+  if (bundle.participants.length > 0 && activeCount <= 1) {
+    await prisma.gameSession.update({
+      where: { id: sessionId },
+      data: { status: "FINISHED", finishedAt: new Date(), currentQuestionStartedAt: null }
+    });
+    return true;
+  }
+  return false;
+}
+
 export async function lockAnswers(sessionId: string) {
   const prisma = await getPrisma();
+  await applyMissingAnswerPenalties(sessionId);
+  const finished = await finishEliminationSessionIfDecided(sessionId);
+  if (finished) return getSessionBundle(sessionId);
   await prisma.gameSession.update({
     where: { id: sessionId },
     data: { status: "ANSWER_LOCKED" }
@@ -541,6 +671,11 @@ export async function nextQuestion(sessionId: string) {
   const prisma = await getPrisma();
   const bundle = await getSessionBundle(sessionId);
   if (!bundle) return null;
+
+  const eliminationFinished = await finishEliminationSessionIfDecided(sessionId);
+  if (eliminationFinished) {
+    return getSessionBundle(sessionId);
+  }
 
   if (bundle.session.currentQuestionIndex >= bundle.quiz.questions.length - 1) {
     await prisma.gameSession.update({
@@ -574,6 +709,7 @@ export async function submitAnswer(participantId: string, selectedAnswer: Answer
   const bundle = await getSessionBundle(participant.sessionId);
   if (!bundle) return { ok: false as const, reason: "Session nicht gefunden" };
   if (!canSubmitAnswer(bundle.session.status)) return { ok: false as const, reason: "Antwortphase ist geschlossen" };
+  if (participant.isEliminated) return { ok: false as const, reason: "Du bist ausgeschieden und kannst nur noch zuschauen." };
   const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
   if (!question) return { ok: false as const, reason: "Frage nicht gefunden" };
 
@@ -599,6 +735,17 @@ export async function submitAnswer(participantId: string, selectedAnswer: Answer
       where: { id: participantId },
       data: { totalPoints: { increment: pointsAwarded }, lastSeenAt: new Date() }
     });
+    if (participant.teamId) {
+      await prisma.team.update({
+        where: { id: participant.teamId },
+        data: { totalPoints: { increment: pointsAwarded } }
+      });
+    }
+    await applyEliminationPenalty(prisma, toParticipant(participant), bundle, isCorrect);
+    const eliminationFinished = await finishEliminationSessionIfDecided(bundle.session.id);
+    if (eliminationFinished) {
+      return { ok: true as const, answer: toAnswer(answer), bundle: await getSessionBundle(bundle.session.id), autoLocked: false as const };
+    }
     const freshBundle = await getSessionBundle(bundle.session.id);
     if (freshBundle?.session.status === "QUESTION_ACTIVE" && allParticipantsAnsweredCurrentQuestion(freshBundle)) {
       const lockedBundle = await lockAnswers(bundle.session.id);

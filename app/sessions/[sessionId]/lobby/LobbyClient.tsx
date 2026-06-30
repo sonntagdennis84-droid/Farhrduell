@@ -7,6 +7,7 @@ import type { GameSession, Participant } from "@/types/domain";
 import { ParticipantList } from "@/components/quiz/ParticipantList";
 import { QRCodePanel } from "@/components/quiz/QRCodePanel";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { gameModeLabel } from "@/lib/game-modes";
 
 export function LobbyClient({
   initialSession,
@@ -66,6 +67,10 @@ export function LobbyClient({
           </div>
         )}
         <QRCodePanel qrCode={qrCode} joinCode={initialSession.joinCode} joinUrl={joinUrl} />
+        <div className="mt-4 rounded border border-show-gold/30 bg-show-gold/10 px-4 py-3">
+          <p className="text-xs font-black uppercase text-show-gold">Spielmodus</p>
+          <p className="mt-1 text-xl font-black">{gameModeLabel(initialSession.gameMode)}</p>
+        </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Link
             className="inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-5 py-2.5 font-bold text-white transition hover:border-show-gold hover:text-show-gold"
