@@ -11,10 +11,8 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
-import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
-import { cn } from "@/lib/utils";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
@@ -86,13 +84,13 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
   const countdownWarningPlayedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
+  const preview = session.status === "RUNNING";
   const active = session.status === "QUESTION_ACTIVE";
   const locked = session.status === "ANSWER_LOCKED";
   const revealed = isAnswerRevealed(session.status);
   const explanationVisible = isExplanationVisible(session.status);
   const scoreboardVisible = isLeaderboardVisible(session.status);
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("host");
-  const adaptive = useAdaptiveStage("fahrduell-host-stage-mode");
   const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
@@ -190,7 +188,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   if (scoreboardVisible) {
     const topThree = leaderboard.slice(0, 3);
     return (
-      <div className={cn("space-y-6", adaptive.className)}>
+      <div className="space-y-6">
         <section className="stage-panel rounded-lg border border-show-gold/50 bg-show-panel/95 p-6 shadow-glow">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -202,9 +200,6 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             </div>
             <div className="flex flex-wrap gap-3">
               <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
-              <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-5 py-3 font-bold text-show-navy" : "rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold"} onClick={adaptive.toggleStage} type="button">
-                Stage Mode
-              </button>
               <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("reveal")}>
                 Zur Auflösung
               </button>
@@ -239,14 +234,14 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
         )}
 
         <section className="rounded-lg border border-white/10 bg-show-panel/90 p-5">
-          <Leaderboard rows={leaderboard} limit={20} />
+          <Leaderboard rows={leaderboard} limit={6} />
         </section>
       </div>
     );
   }
 
   return (
-    <div className={adaptive.className}>
+    <div>
       <section className="stage-panel rounded-lg border border-white/10 bg-show-panel/90 p-6">
         {activeWelcome && (
           <div className="mb-5 rounded-lg border border-show-gold/40 bg-show-gold/12 px-5 py-4 shadow-glow">
@@ -267,20 +262,18 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
             </div>
             <h1 className="stage-question-title mt-3 text-4xl font-black leading-tight">{question.questionText}</h1>
             <p className="mt-3 inline-flex rounded border border-white/10 bg-black/25 px-3 py-1 text-sm font-black uppercase text-white/70">
-              {active ? "Antwortphase läuft" : locked ? "Antworten gesperrt" : revealed ? "Auflösung" : "Bereit"}
+              {preview ? "Frage sichtbar" : active ? "Antwortphase läuft" : locked ? "Antworten gesperrt" : revealed ? "Auflösung" : "Bereit"}
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
             <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
-            <button className={adaptive.manualStage ? "stage-chrome-secondary rounded border border-show-gold bg-show-gold px-4 py-2 text-sm font-black text-show-navy" : "stage-chrome-secondary rounded border border-white/20 px-4 py-2 text-sm font-black hover:border-show-gold hover:text-show-gold"} onClick={adaptive.toggleStage} type="button">
-              Stage Mode
-            </button>
-            <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />
+            {!preview && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} size="stage" />}
           </div>
         </div>
 
         <QuestionMedia question={question} large />
 
+        {!preview && (
         <div className="stage-answer-grid mt-8 grid gap-4 md:grid-cols-2">
           {answerTexts &&
             (["A", "B", "C", "D"] as const).map((option) => (
@@ -289,6 +282,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
               </div>
             ))}
         </div>
+        )}
 
         {explanationVisible && <ExplanationPanel question={question} />}
 
@@ -296,7 +290,9 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           <a className="inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" href={`/host/${session.id}/remote`} target="_blank">
             Handy-Fernbedienung
           </a>
-          {!active && !locked && !revealed && <PrimaryButton onClick={() => action("start")}>Frage starten</PrimaryButton>}
+          {!active && !locked && !revealed && !preview && <PrimaryButton onClick={() => action("start")}>Frage anzeigen</PrimaryButton>}
+          {preview && <PrimaryButton onClick={() => action("timer")}>Timer starten</PrimaryButton>}
+          {preview && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Frage überspringen</button>}
           {active && <PrimaryButton onClick={() => action("lock")}>Antworten sperren</PrimaryButton>}
           {locked && <PrimaryButton onClick={() => action("reveal")}>Antwort auflösen</PrimaryButton>}
           {revealed && !explanationVisible && <PrimaryButton onClick={() => action("explanation")}>Erklärung anzeigen</PrimaryButton>}

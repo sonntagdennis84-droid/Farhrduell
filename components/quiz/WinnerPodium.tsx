@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import type { LeaderboardRow } from "@/types/domain";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
-import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { cn } from "@/lib/utils";
 
 type PodiumRank = 1 | 2 | 3;
@@ -47,7 +46,7 @@ const podiumConfig: Record<PodiumRank, { medal: string; label: string; tone: str
 };
 
 function ConfettiField({ intense }: { intense: boolean }) {
-  const pieces = intense ? 120 : 86;
+  const pieces = intense ? 96 : 72;
   const colors = ["#FACC15", "#E5E7EB", "#C9782B", "#EF4444", "#2563EB"];
 
   return (
@@ -108,7 +107,6 @@ function PodiumPlace({ row }: { row: LeaderboardRow }) {
 
 export function WinnerPodium({ rows, title = "Gl\u00fcckwunsch!", subtitle = "Hier sind die Gewinner." }: { rows: LeaderboardRow[]; title?: string; subtitle?: string }) {
   const { playSound } = useFahrduellSound("results");
-  const adaptive = useAdaptiveStage("fahrduell-results-stage-mode");
   const topRows = useMemo(() => rows.filter((row) => row.rank <= 3), [rows]);
   const ordered = useMemo(() => [topRows.find((row) => row.rank === 2), topRows.find((row) => row.rank === 1), topRows.find((row) => row.rank === 3)].filter(Boolean) as LeaderboardRow[], [topRows]);
 
@@ -123,12 +121,12 @@ export function WinnerPodium({ rows, title = "Gl\u00fcckwunsch!", subtitle = "Hi
   }, [playSound]);
 
   return (
-    <section className={cn("finale-stage relative overflow-hidden rounded-lg border border-show-gold/30 bg-[#050914] p-5 shadow-glow", adaptive.className)}>
+    <section className="finale-stage relative overflow-hidden rounded-lg border border-show-gold/30 bg-[#050914] p-5 shadow-glow">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(246,180,0,0.28),transparent_28rem),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.7))]" />
       <div className="finale-spotlight finale-spotlight-left" />
       <div className="finale-spotlight finale-spotlight-right" />
       <div className="finale-gold-shimmer" />
-      <ConfettiField intense={adaptive.stageActive} />
+      <ConfettiField intense={false} />
 
       <div className="relative z-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -137,9 +135,6 @@ export function WinnerPodium({ rows, title = "Gl\u00fcckwunsch!", subtitle = "Hi
             <h2 className="winner-podium-title mt-2 text-4xl font-black text-white">{title}</h2>
             <p className="mt-1 text-white/65">{subtitle}</p>
           </div>
-          <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-4 py-2 text-sm font-black text-show-navy" : "rounded border border-white/15 px-4 py-2 text-sm font-black text-white/75"} onClick={adaptive.toggleStage} type="button">
-            Stage Mode
-          </button>
         </div>
 
         <div className="mt-10 grid items-end gap-5 md:grid-cols-3">

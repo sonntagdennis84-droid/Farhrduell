@@ -401,6 +401,7 @@ export async function createSession(quizId: string, options?: { gameMode?: strin
   const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
   if (!quiz || quiz.isArchived) return null;
   const gameMode = normalizeGameMode(options?.gameMode);
+  const hostUserId = await getCurrentUserId();
   let joinCode = makeJoinCode();
   while (!joinCode || (await prisma.gameSession.findUnique({ where: { joinCode } }))) {
     joinCode = makeJoinCode();
@@ -409,6 +410,7 @@ export async function createSession(quizId: string, options?: { gameMode?: strin
   const session = await prisma.gameSession.create({
     data: {
       quizId,
+      hostUserId,
       joinCode,
       gameMode,
       teams: gameMode === "team_battle"
@@ -461,6 +463,36 @@ export async function getSessionBundle(sessionId: string) {
   const teams = sessionRecord.teams.map(toTeam);
   const answers = sessionRecord.answers.map(toAnswer);
   return { session, quiz, participants, teams, answers, leaderboard: buildLeaderboard(participants, answers), teamLeaderboard: buildTeamLeaderboard(teams, participants) };
+}
+
+export async function getActiveSessionForCurrentUser() {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+  const prisma = await getPrisma();
+  const sessionRecord = await prisma.gameSession.findFirst({
+    where: {
+      hostUserId: userId,
+      status: { not: "FINISHED" }
+    },
+    orderBy: { createdAt: "desc" },
+    include: { quiz: true }
+  });
+  if (!sessionRecord) return null;
+  return {
+    session: toSession(sessionRecord),
+    quizTitle: sessionRecord.quiz.title
+  };
+}
+
+export async function currentUserCanHostSession(sessionId: string) {
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
+  const prisma = await getPrisma();
+  const session = await prisma.gameSession.findUnique({
+    where: { id: sessionId },
+    select: { hostUserId: true }
+  });
+  return Boolean(session?.hostUserId && session.hostUserId === userId);
 }
 
 function disambiguateParticipantNames(participants: Participant[]) {
@@ -569,10 +601,19 @@ export async function joinSession(joinCode: string, displayName: string, emoji =
 
 export async function startQuestion(sessionId: string) {
   const prisma = await getPrisma();
-  const startedAt = new Date();
-  const session = await prisma.gameSession.update({
+  await prisma.gameSession.update({
     where: { id: sessionId },
-    data: { status: "QUESTION_ACTIVE", startedAt, currentQuestionStartedAt: startedAt }
+    data: { status: "RUNNING", startedAt: new Date(), currentQuestionStartedAt: null }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function startQuestionTimer(sessionId: string) {
+  const prisma = await getPrisma();
+  const startedAt = new Date();
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: { status: "QUESTION_ACTIVE", currentQuestionStartedAt: startedAt }
   });
   return getSessionBundle(sessionId);
 }
@@ -683,10 +724,9 @@ export async function nextQuestion(sessionId: string) {
       data: { status: "FINISHED", finishedAt: new Date(), currentQuestionStartedAt: null }
     });
   } else {
-    const startedAt = new Date();
     await prisma.gameSession.update({
       where: { id: sessionId },
-      data: { currentQuestionIndex: bundle.session.currentQuestionIndex + 1, status: "QUESTION_ACTIVE", currentQuestionStartedAt: startedAt }
+      data: { currentQuestionIndex: bundle.session.currentQuestionIndex + 1, status: "RUNNING", currentQuestionStartedAt: null }
     });
   }
 

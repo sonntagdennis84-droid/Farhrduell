@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PropsWithChildren } from "react";
+import { AppConnectBanner } from "@/components/app/AppConnectBanner";
 import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({ children }: PropsWithChildren) {
@@ -29,6 +30,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-8">{children}</div>
+      <AppConnectBanner />
     </main>
   );
 }

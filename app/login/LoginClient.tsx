@@ -21,6 +21,7 @@ export function LoginClient({ config }: { config: LoginConfig }) {
 
   useEffect(() => {
     const queryEmail = searchParams.get("email")?.trim();
+    if (searchParams.get("app") === "1") window.localStorage.setItem("fahrduell-app-context", "1");
     setEmail(queryEmail || config.suggestedEmail || "");
   }, [config.suggestedEmail, searchParams]);
 

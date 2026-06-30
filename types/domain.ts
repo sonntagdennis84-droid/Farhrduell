@@ -68,6 +68,7 @@ export type QuizCategory = {
 export type GameSession = {
   id: string;
   quizId: string;
+  hostUserId?: string | null;
   joinCode: string;
   status: SessionStatus;
   gameMode?: GameMode | string;

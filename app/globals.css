@@ -55,42 +55,41 @@ select {
   background-size: 38px 38px;
 }
 
-.adaptive-shell {
-  --stage-gap: clamp(0.85rem, 1.2vw, 1.75rem);
-  --stage-panel-pad: clamp(1rem, 1.35vw, 2rem);
-  --stage-question-size: clamp(2.35rem, 3.4vw, 5.8rem);
-  --stage-body-size: clamp(1rem, 1.05vw, 1.55rem);
-  --stage-answer-size: clamp(1.5rem, 2vw, 3.25rem);
-  --stage-answer-min: clamp(8.5rem, 14vh, 18rem);
-  --stage-timer-size: clamp(7rem, 8vw, 13rem);
-  --stage-media-height: clamp(18rem, 42vh, 58rem);
+:root {
+  --stage-gap: 1rem;
+  --stage-panel-pad: 1.5rem;
+  --stage-question-size: 2.75rem;
+  --stage-body-size: 1.05rem;
+  --stage-answer-size: 1.85rem;
+  --stage-answer-min: 9rem;
+  --stage-timer-size: 8rem;
+  --stage-media-height: 42vh;
 }
 
-.adaptive-smartphone {
-  --stage-gap: 0.85rem;
-  --stage-panel-pad: 1rem;
-  --stage-question-size: clamp(1.7rem, 8vw, 2.5rem);
-  --stage-body-size: 1rem;
-  --stage-answer-size: clamp(1.15rem, 5.2vw, 1.8rem);
-  --stage-answer-min: clamp(7.25rem, 19svh, 10rem);
-  --stage-timer-size: clamp(4.75rem, 20vw, 6.25rem);
-  --stage-media-height: 34svh;
+@media (max-width: 640px) {
+  :root {
+    --stage-gap: 0.85rem;
+    --stage-panel-pad: 1rem;
+    --stage-question-size: 2rem;
+    --stage-body-size: 1rem;
+    --stage-answer-size: 1.35rem;
+    --stage-answer-min: 7.5rem;
+    --stage-timer-size: 5.5rem;
+    --stage-media-height: 34svh;
+  }
 }
 
-.adaptive-tablet {
-  --stage-question-size: clamp(2.15rem, 5vw, 4rem);
-  --stage-answer-size: clamp(1.45rem, 3vw, 2.2rem);
-  --stage-answer-min: clamp(8rem, 16vh, 12rem);
-  --stage-media-height: 40svh;
-}
-
-.adaptive-stage {
-  --stage-question-size: clamp(3.2rem, 4.7vw, 7rem);
-  --stage-body-size: clamp(1.35rem, 1.35vw, 2rem);
-  --stage-answer-size: clamp(2rem, 2.45vw, 4rem);
-  --stage-answer-min: clamp(10rem, 17vh, 21rem);
-  --stage-timer-size: clamp(9rem, 9.5vw, 15rem);
-  --stage-media-height: clamp(23rem, 48vh, 64rem);
+@media (min-width: 1800px) {
+  :root {
+    --stage-gap: 1.25rem;
+    --stage-panel-pad: 2rem;
+    --stage-question-size: 3.5rem;
+    --stage-body-size: 1.2rem;
+    --stage-answer-size: 2.25rem;
+    --stage-answer-min: 11rem;
+    --stage-timer-size: 10rem;
+    --stage-media-height: 46vh;
+  }
 }
 
 .stage-panel {
@@ -146,33 +145,34 @@ select {
   object-position: center;
 }
 
-.adaptive-stage .stage-chrome-secondary {
-  opacity: 0.74;
-}
-
-.adaptive-smartphone .stage-answer-grid {
+@media (max-width: 640px) {
+  .stage-answer-grid {
   grid-template-columns: 1fr !important;
+  }
 }
 
-.adaptive-tablet .remote-heatmap-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 760px) {
+  .remote-heatmap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .remote-shell {
+    max-width: 48rem;
+  }
 }
 
-.adaptive-tablet .remote-shell,
-.adaptive-notebook .remote-shell {
-  max-width: 48rem;
-}
+@media (min-width: 1800px) {
+  .winner-podium-title {
+    font-size: 4.75rem;
+  }
 
-.adaptive-stage .winner-podium-title {
-  font-size: clamp(3rem, 5vw, 7rem);
-}
+  .winner-podium-card {
+    min-height: 24rem;
+  }
 
-.adaptive-stage .winner-podium-card {
-  min-height: clamp(18rem, 35vh, 34rem);
-}
-
-.adaptive-stage .winner-podium-name {
-  font-size: clamp(2.2rem, 3vw, 4rem);
+  .winner-podium-name {
+    font-size: 3.25rem;
+  }
 }
 
 @keyframes finale-rise {

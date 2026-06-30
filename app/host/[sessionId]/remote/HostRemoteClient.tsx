@@ -10,10 +10,8 @@ import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
-import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
-import { cn } from "@/lib/utils";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
 
@@ -55,6 +53,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const previousStatusRef = useRef(session.status);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
+  const preview = session.status === "RUNNING";
   const active = session.status === "QUESTION_ACTIVE";
   const locked = session.status === "ANSWER_LOCKED";
   const revealed = isAnswerRevealed(session.status);
@@ -64,7 +63,6 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const activeParticipantCount = participants.filter((participant) => !participant.isEliminated).length;
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
   const haptic = useHapticFeedback();
-  const adaptive = useAdaptiveStage("fahrduell-remote-stage-mode");
 
   const groupedAnswers = useMemo(() => {
     const groups = {
@@ -167,7 +165,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   }
 
   return (
-    <main className={cn("show-grid safe-screen min-h-screen overflow-x-hidden", adaptive.className)} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+    <main className="show-grid safe-screen min-h-screen overflow-x-hidden" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
       <div className="remote-shell mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col pb-4">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
@@ -184,9 +182,6 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             </div>
             <div className="flex items-center gap-2">
               <SoundToggleButton soundEnabled={soundEnabled} onToggle={toggleSound} />
-              <button className={adaptive.manualStage ? "rounded border border-show-gold bg-show-gold px-3 py-2 text-sm font-black text-show-navy" : "rounded border border-white/15 px-3 py-2 text-sm font-black text-white/75"} onClick={adaptive.toggleStage} type="button">
-                Stage
-              </button>
               <span className="rounded border border-show-gold/40 bg-show-gold/10 px-3 py-2 text-sm font-black text-show-gold">{statusLabel[session.status] ?? session.status}</span>
             </div>
           </div>
@@ -270,7 +265,9 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
 
         <section className="sticky bottom-3 mt-auto rounded-lg border border-white/10 bg-show-navy/95 p-3 shadow-2xl backdrop-blur">
           <div className="grid gap-3">
-            {!active && !locked && !revealed && <RemoteButton icon={<Play size={24} />} label="Frage starten" onClick={() => action("start")} />}
+            {!active && !locked && !revealed && !preview && <RemoteButton icon={<Play size={24} />} label="Frage anzeigen" onClick={() => action("start")} />}
+            {preview && <RemoteButton icon={<Play size={24} />} label="Timer starten" onClick={() => action("timer")} />}
+            {preview && <RemoteButton icon={<SkipForward size={24} />} label="Frage überspringen" onClick={() => action("next")} tone="secondary" />}
             {active && <RemoteButton icon={<Lock size={24} />} label="Antworten sperren" onClick={() => action("lock")} />}
             {locked && <RemoteButton icon={<Eye size={24} />} label="Antwort auflösen" onClick={() => action("reveal")} />}
             {revealed && <RemoteButton icon={<SkipForward size={24} />} label="Nächste Frage starten" onClick={() => action("next")} />}

@@ -10,7 +10,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const suggestedEmail = typeof params.email === "string" ? params.email : process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? "";
 
   if (userId) {
-    redirect(next && next.startsWith("/") ? next : "/dashboard");
+    const target = next && next.startsWith("/") ? next : "/dashboard";
+    redirect(appMode && !target.includes("?") ? `${target}?app=1` : target);
   }
 
   return <LoginClient config={{ appMode, suggestedEmail }} />;

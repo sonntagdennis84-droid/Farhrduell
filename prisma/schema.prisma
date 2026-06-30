@@ -41,6 +41,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   quizzes      Quiz[]
+  hostedSessions GameSession[]
 }
 
 model QuizCategory {
@@ -104,6 +105,8 @@ model GameSession {
   id                   String        @id @default(cuid())
   quizId               String
   quiz                 Quiz          @relation(fields: [quizId], references: [id])
+  hostUserId           String?
+  hostUser             User?         @relation(fields: [hostUserId], references: [id], onDelete: SetNull)
   joinCode             String        @unique
   status               SessionStatus @default(LOBBY)
   gameMode             String        @default("classic")

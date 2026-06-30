@@ -7,9 +7,7 @@ import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { Logo } from "@/components/ui/Logo";
 import { TimerRing } from "@/components/quiz/TimerRing";
-import { useAdaptiveStage } from "@/hooks/useAdaptiveStage";
 import { isAnswerLocked, isAnswerRevealed } from "@/lib/session-state";
-import { cn } from "@/lib/utils";
 
 function remainingSeconds(session: GameSession, question: Question) {
   const startedAt = session.currentQuestionStartedAt ? new Date(session.currentQuestionStartedAt).getTime() : Date.now();
@@ -25,11 +23,11 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   const [message, setMessage] = useState("Warte auf den Start.");
   const [connected, setConnected] = useState(false);
   const question: Question | undefined = quiz.questions[currentSession.currentQuestionIndex];
+  const preview = currentSession.status === "RUNNING";
   const active = currentSession.status === "QUESTION_ACTIVE";
   const locked = isAnswerLocked(currentSession.status);
   const revealed = isAnswerRevealed(currentSession.status);
   const eliminated = Boolean(currentParticipant.isEliminated);
-  const adaptive = useAdaptiveStage("fahrduell-play-stage-mode");
 
   const answerTexts = useMemo(() => (question ? { A: question.answerA, B: question.answerB, C: question.answerC, D: question.answerD } : null), [question]);
 
@@ -59,6 +57,10 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
       if (bundle.session.status === "ANSWER_LOCKED") setMessage("Antworten sind gesperrt.");
       if (bundle.session.status === "ANSWER_REVEALED") setMessage("Frage aufgelöst.");
       if (bundle.session.status === "EXPLANATION_VISIBLE") setMessage("Erklärung eingeblendet.");
+      if (bundle.session.status === "RUNNING") {
+        setSelected(null);
+        setMessage("Warte auf Antwortfreigabe.");
+      }
       if (bundle.session.status === "QUESTION_ACTIVE") {
         setSelected(null);
         setMessage("");
@@ -99,7 +101,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   }
 
   return (
-    <main className={cn("show-grid safe-screen overflow-x-hidden", adaptive.className)}>
+    <main className="show-grid safe-screen overflow-x-hidden">
       <div className="mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-md flex-col">
         <header className="flex items-center justify-between gap-3">
           <Logo compact />
@@ -122,21 +124,21 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
                 Frage {question ? currentSession.currentQuestionIndex + 1 : 0} von {quiz.questions.length}
               </p>
               <p className="mt-2 text-xs font-black uppercase text-white/55">
-                {active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
+                {preview ? "Warte auf Freigabe" : active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
               </p>
             </div>
-            {question && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
+            {question && !preview && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
           </div>
 
           <div className="stage-answer-grid mt-5 grid flex-1 content-center gap-3">
-            {answerTexts &&
+            {!preview && answerTexts &&
               (["A", "B", "C", "D"] as const).map((option) => (
                 <div key={option} className={revealed && option === question?.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>
                   <AnswerButton
                     option={option}
                     text=""
                     selected={selected === option}
-                    disabled={!active || !!selected || eliminated}
+                    disabled={!active || !!selected || eliminated || preview}
                     className="min-h-[7.5rem] justify-center rounded-lg px-4 py-4 [&>span:last-child]:hidden"
                     onClick={() => answer(option)}
                   />
@@ -146,6 +148,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
 
           <div className="mt-4 min-h-7 text-center">
             {message && <p className="font-black text-show-gold">{message}</p>}
+            {preview && <p className="font-black text-show-gold">Warte auf Antwortfreigabe.</p>}
             {eliminated && <p className="font-black text-show-red">Du bist ausgeschieden und kannst weiter zuschauen.</p>}
             {!active && !locked && <p className="text-sm font-semibold text-white/60">Warte auf die nächste Frage.</p>}
           </div>
