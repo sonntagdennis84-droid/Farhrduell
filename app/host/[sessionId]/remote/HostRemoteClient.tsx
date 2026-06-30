@@ -4,7 +4,7 @@ import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-rea
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, LiveAnswerHeatmapParticipant, Participant, Quiz, TeamLeaderboardRow } from "@/types/domain";
+import type { GameSession, LeaderboardRow, LiveAnswerHeatmap, Participant, Quiz, TeamLeaderboardRow } from "@/types/domain";
 import { Logo } from "@/components/ui/Logo";
 import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
@@ -64,19 +64,14 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const { soundEnabled, playSound, toggleSound } = useFahrduellSound("remote");
   const haptic = useHapticFeedback();
 
-  const groupedAnswers = useMemo(() => {
-    const groups = {
-      A: [] as LiveAnswerHeatmapParticipant[],
-      B: [] as LiveAnswerHeatmapParticipant[],
-      C: [] as LiveAnswerHeatmapParticipant[],
-      D: [] as LiveAnswerHeatmapParticipant[],
-      pending: [] as LiveAnswerHeatmapParticipant[]
-    };
-    for (const participant of heatmap?.participants ?? []) {
-      if (!participant.selectedAnswer) groups.pending.push(participant);
-      else groups[participant.selectedAnswer].push(participant);
-    }
-    return groups;
+  const answerStats = useMemo(() => {
+    const answered = (heatmap?.counts.A ?? 0) + (heatmap?.counts.B ?? 0) + (heatmap?.counts.C ?? 0) + (heatmap?.counts.D ?? 0);
+    return [
+      { key: "A", title: "A", count: heatmap?.counts.A ?? 0, chipClass: "border-sky-400/40 bg-sky-400/10 text-sky-300", barClass: "bg-sky-400" },
+      { key: "B", title: "B", count: heatmap?.counts.B ?? 0, chipClass: "border-orange-400/40 bg-orange-400/10 text-orange-300", barClass: "bg-orange-400" },
+      { key: "C", title: "C", count: heatmap?.counts.C ?? 0, chipClass: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300", barClass: "bg-emerald-400" },
+      { key: "D", title: "D", count: heatmap?.counts.D ?? 0, chipClass: "border-rose-400/40 bg-rose-400/10 text-rose-300", barClass: "bg-rose-400" }
+    ].map((item) => ({ ...item, percent: answered > 0 ? Math.round((item.count / answered) * 100) : 0 }));
   }, [heatmap]);
 
   useEffect(() => {
@@ -208,42 +203,34 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
         {(active || locked || revealed) && heatmap && (
           <section className="mt-4 rounded-lg border border-white/10 bg-show-panel/85 p-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-black uppercase text-show-gold">Live-Antworten</h2>
+              <div>
+                <h2 className="text-sm font-black uppercase text-show-gold">Stimmenverteilung</h2>
+                <p className="mt-1 text-xs font-bold text-white/45">Anonymisiert nach Antwort</p>
+              </div>
               <span className="text-xs font-bold text-white/50">{heatmap.participants.length} Teilnehmer</span>
             </div>
-            <div className="remote-heatmap-grid mt-3 grid gap-3">
-              {[
-                { key: "A", title: "A", chipClass: "border-sky-400/40 bg-sky-400/10 text-sky-300" },
-                { key: "B", title: "B", chipClass: "border-orange-400/40 bg-orange-400/10 text-orange-300" },
-                { key: "C", title: "C", chipClass: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" },
-                { key: "D", title: "D", chipClass: "border-rose-400/40 bg-rose-400/10 text-rose-300" },
-                { key: "pending", title: "Noch offen", chipClass: "border-white/15 bg-white/5 text-white/75" }
-              ].map((group) => {
-                const names = groupedAnswers[group.key as keyof typeof groupedAnswers];
+            <div className="mt-4 grid gap-3">
+              {answerStats.map((group) => {
                 const isCorrectGroup = revealed && heatmap.correctAnswer === group.key;
                 return (
                   <div key={group.key} className={isCorrectGroup ? "rounded-lg border border-show-gold bg-show-gold/10 p-3 shadow-glow" : "rounded-lg border border-white/10 bg-black/20 p-3"}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`rounded border px-3 py-1 text-xs font-black ${group.chipClass}`}>{group.title}</span>
-                      <span className="text-xs font-bold text-white/45">{names.length}</span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {names.length === 0 ? (
-                        <span className="text-sm font-semibold text-white/35">-</span>
-                      ) : (
-                        names.map((participant) => (
-                          <span key={`${group.key}-${participant.id}`} className={`inline-flex items-center gap-2 rounded border px-2 py-1 text-sm font-bold ${group.chipClass}`}>
-                            <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
-                            {participant.displayName}
-                            {participant.isEliminated && <span className="text-show-red">K.O.</span>}
-                            {Number(participant.livesRemaining ?? 0) > 0 && <span className="text-show-gold">♥ {participant.livesRemaining}</span>}
-                          </span>
-                        ))
-                      )}
+                    <div className="grid grid-cols-[3.25rem_1fr_4.5rem] items-center gap-3">
+                      <span className={`grid h-11 w-11 place-items-center rounded border text-lg font-black ${group.chipClass}`}>{group.title}</span>
+                      <div className="h-4 overflow-hidden rounded-full bg-white/10">
+                        <div className={`h-full rounded-full transition-all duration-500 ${group.barClass}`} style={{ width: `${group.percent}%` }} />
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-white">{group.count}</div>
+                        <div className="text-[0.65rem] font-black uppercase text-white/45">{group.percent}%</div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
+            </div>
+            <div className="mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+              <span className="text-sm font-black uppercase text-white/60">Noch offen</span>
+              <span className="text-2xl font-black text-show-gold">{heatmap.counts.pending}</span>
             </div>
           </section>
         )}

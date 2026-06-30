@@ -57,6 +57,15 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 - Fehlende Sounddateien unter `public/sounds/` sind unkritisch und fuehren nicht zu Abstuerzen.
 - Browserseitige Audio-Sperren nach dem Seitenladen sind beruecksichtigt und werden still behandelt.
 
+## Fahrduell AI Labs
+
+- AI Labs ist lokal fuer Admins im Quizeditor vorbereitet.
+- Moderatoren sehen keine AI-Labs-Oberflaeche.
+- `POST /api/ai-labs/generate` prueft die Rolle serverseitig und liefert fuer Nicht-Admins neutral `404`.
+- Die KI-Logik ist in `services/ai/ai-labs.ts` getrennt vorbereitet.
+- Aktueller Anbieter ist `local-preview`, damit Workflow, Rechte und UI ohne externen KI-Key getestet werden koennen.
+- Vorschlaege werden nur angezeigt und erst nach Admin-Bestaetigung in Formularfelder uebernommen.
+
 ## Deployment-Dateien
 
 - `.env.example`
@@ -69,6 +78,8 @@ Konsequenz: Persistente Kerndaten und Live-Frage-Startzeit sind vorbereitet. Vor
 - `scripts/seed-admin.mjs`
 - `scripts/seed-driving-school-quizzes.mjs`
 - `docs/QUIZ_SEEDING.md`
+- `docs/AI_LABS.md`
+- `docs/FEATURES.md`
 
 ## Naechster empfohlener Arbeitsschritt
 

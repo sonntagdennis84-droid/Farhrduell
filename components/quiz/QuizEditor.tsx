@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AnswerOption, MediaType, Quiz, QuizCategory } from "@/types/domain";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import type { AiLabsAction } from "@/services/ai/ai-labs";
 
 type QuestionDraft = {
   id?: string;
@@ -33,6 +34,12 @@ type QuestionDraft = {
   topic?: string | null;
 };
 
+type AiSuggestionState = {
+  action: AiLabsAction;
+  questionIndex: number;
+  text: string;
+} | null;
+
 const emptyQuestion: QuestionDraft = {
   questionText: "",
   answerA: "",
@@ -59,7 +66,14 @@ const emptyQuestion: QuestionDraft = {
   topic: ""
 };
 
-export function QuizEditor({ quiz }: { quiz?: Quiz }) {
+const aiActions: { action: AiLabsAction; label: string; target?: keyof QuestionDraft }[] = [
+  { action: "explanation", label: "Erklärung erzeugen", target: "explanation" },
+  { action: "memorySentence", label: "Merksatz erzeugen", target: "memorySentence" },
+  { action: "practicalExample", label: "Praxisbeispiel erzeugen", target: "practicalExample" },
+  { action: "imagePrompt", label: "Bildvorschlag erzeugen" }
+];
+
+export function QuizEditor({ quiz, aiLabsEnabled = false }: { quiz?: Quiz; aiLabsEnabled?: boolean }) {
   const router = useRouter();
   const [title, setTitle] = useState(quiz?.title ?? "");
   const [description, setDescription] = useState(quiz?.description ?? "");
@@ -71,6 +85,10 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
   const [uploadingQuestion, setUploadingQuestion] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [error, setError] = useState("");
+  const [aiQuestionIndex, setAiQuestionIndex] = useState(0);
+  const [aiBusyAction, setAiBusyAction] = useState<AiLabsAction | null>(null);
+  const [aiError, setAiError] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestionState>(null);
 
   useEffect(() => {
     fetch("/api/categories")
@@ -124,8 +142,37 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
     router.refresh();
   }
 
+  async function generateAiSuggestion(action: AiLabsAction) {
+    const question = questions[aiQuestionIndex];
+    if (!question) return;
+    setAiBusyAction(action);
+    setAiError("");
+    const quizCategory = categories.find((category) => category.id === categoryId)?.name ?? newCategoryName;
+    const response = await fetch("/api/ai-labs/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, quizTitle: title, quizDescription: description, quizCategory, question })
+    });
+    const result = await response.json().catch(() => null);
+    setAiBusyAction(null);
+    if (!response.ok || !result?.suggestion) {
+      setAiError(result?.error ?? "AI Labs konnte keinen Vorschlag erstellen.");
+      return;
+    }
+    setAiSuggestion({ action, questionIndex: aiQuestionIndex, text: result.suggestion });
+  }
+
+  function acceptAiSuggestion() {
+    if (!aiSuggestion) return;
+    const action = aiActions.find((item) => item.action === aiSuggestion.action);
+    if (!action?.target) return;
+    updateQuestion(aiSuggestion.questionIndex, action.target, aiSuggestion.text);
+    setAiSuggestion(null);
+  }
+
   return (
-    <form onSubmit={save} className="space-y-6">
+    <form onSubmit={save} className={aiLabsEnabled ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]" : "space-y-6"}>
+      <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
         <label>
           <span className="text-sm font-bold text-white/70">Titel</span>
@@ -299,6 +346,71 @@ export function QuizEditor({ quiz }: { quiz?: Quiz }) {
         </button>
         <PrimaryButton disabled={saving}>{saving ? "Speichert..." : "Quiz speichern"}</PrimaryButton>
       </div>
+      </div>
+
+      {aiLabsEnabled && (
+        <aside className="h-fit rounded-lg border border-show-gold/30 bg-show-navy/80 p-4 shadow-2xl xl:sticky xl:top-6">
+          <div className="rounded border border-show-gold/20 bg-show-gold/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-show-gold">
+            Interne Admin-Testfunktion
+          </div>
+          <h2 className="mt-4 text-2xl font-black text-white">Fahrduell AI Labs</h2>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-white/65">
+            Erstellt Vorschläge für bestehende Fragen. Nichts wird automatisch gespeichert.
+          </p>
+
+          <label className="mt-4 block">
+            <span className="text-sm font-bold text-white/70">Zielfrage</span>
+            <select className="mt-1 w-full rounded border border-white/15 bg-show-panel px-3 py-3" value={aiQuestionIndex} onChange={(event) => setAiQuestionIndex(Number(event.target.value))}>
+              {questions.map((question, index) => (
+                <option key={index} value={index}>
+                  Frage {index + 1}: {(question.questionText || "Ohne Text").slice(0, 42)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-4 grid gap-2">
+            {aiActions.map((item) => (
+              <button
+                key={item.action}
+                type="button"
+                className="min-h-12 rounded border border-white/15 bg-white/5 px-4 py-3 text-left font-black hover:border-show-gold hover:text-show-gold disabled:cursor-wait disabled:opacity-60"
+                disabled={Boolean(aiBusyAction)}
+                onClick={() => generateAiSuggestion(item.action)}
+              >
+                {aiBusyAction === item.action ? "KI erstellt Vorschlag..." : item.label}
+              </button>
+            ))}
+          </div>
+
+          {aiError && <p className="mt-4 rounded border border-show-red/30 bg-show-red/10 p-3 text-sm font-bold text-show-red">{aiError}</p>}
+
+          {aiSuggestion && (
+            <div className="mt-5 rounded-lg border border-white/10 bg-black/25 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black uppercase text-show-gold">Vorschau</p>
+                <button type="button" className="text-sm font-bold text-white/65 hover:text-white" onClick={() => setAiSuggestion(null)}>
+                  Verwerfen
+                </button>
+              </div>
+              <textarea className="mt-3 min-h-40 w-full rounded border border-white/15 bg-show-panel px-3 py-3 text-sm" value={aiSuggestion.text} onChange={(event) => setAiSuggestion({ ...aiSuggestion, text: event.target.value })} />
+              {aiActions.find((item) => item.action === aiSuggestion.action)?.target ? (
+                <PrimaryButton className="mt-3 w-full" type="button" onClick={acceptAiSuggestion}>
+                  Übernehmen
+                </PrimaryButton>
+              ) : (
+                <button
+                  type="button"
+                  className="mt-3 w-full rounded border border-white/20 px-4 py-3 font-black hover:border-show-gold hover:text-show-gold"
+                  onClick={() => navigator.clipboard?.writeText(aiSuggestion.text)}
+                >
+                  Prompt kopieren
+                </button>
+              )}
+            </div>
+          )}
+        </aside>
+      )}
     </form>
   );
 }
