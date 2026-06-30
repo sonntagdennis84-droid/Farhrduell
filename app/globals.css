@@ -174,3 +174,165 @@ select {
 .adaptive-stage .winner-podium-name {
   font-size: clamp(2.2rem, 3vw, 4rem);
 }
+
+@keyframes finale-rise {
+  from {
+    opacity: 0;
+    transform: translateY(5rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes finale-card {
+  from {
+    opacity: 0;
+    transform: translateY(1.8rem) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes finale-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-drift, 2rem), 112vh, 0) rotate(780deg);
+  }
+}
+
+@keyframes finale-spotlight {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes finale-list-slide {
+  from {
+    opacity: 0;
+    transform: translateY(2.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.finale-stage {
+  min-height: clamp(34rem, 76vh, 68rem);
+}
+
+.finale-podium-place {
+  opacity: 0;
+  animation: finale-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.finale-winner-card {
+  opacity: 0;
+  animation: finale-card 760ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: inherit;
+}
+
+.finale-delay-3 {
+  animation-delay: 1800ms;
+}
+
+.finale-delay-2 {
+  animation-delay: 2700ms;
+}
+
+.finale-delay-1 {
+  animation-delay: 3700ms;
+}
+
+.finale-confetti {
+  --confetti-drift: 1rem;
+  animation-name: finale-confetti-fall;
+  animation-timing-function: cubic-bezier(0.22, 0.72, 0.28, 1);
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+}
+
+.finale-confetti:nth-child(3n) {
+  --confetti-drift: -3rem;
+}
+
+.finale-confetti:nth-child(4n) {
+  --confetti-drift: 4rem;
+}
+
+.finale-spotlight {
+  pointer-events: none;
+  position: absolute;
+  top: -12%;
+  height: 85%;
+  width: 28%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(246, 180, 0, 0.11) 55%, transparent);
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  opacity: 0.42;
+  animation: finale-spotlight 3200ms ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.finale-spotlight-left {
+  left: 16%;
+  transform: rotate(18deg);
+}
+
+.finale-spotlight-right {
+  right: 16%;
+  transform: rotate(-18deg);
+}
+
+.finale-gold-shimmer {
+  pointer-events: none;
+  position: absolute;
+  inset: 10% 24% 18%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.3), rgba(250, 204, 21, 0.08) 36%, transparent 68%);
+  filter: blur(22px);
+}
+
+.finale-winner-glow {
+  box-shadow:
+    0 0 0 1px rgba(250, 204, 21, 0.22),
+    0 0 42px rgba(250, 204, 21, 0.22),
+    0 22px 50px rgba(0, 0, 0, 0.38);
+}
+
+.finale-podium-block {
+  transform-style: preserve-3d;
+}
+
+.finale-podium-block::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1.15rem;
+  height: 1.4rem;
+  border-radius: 0 0 1rem 1rem;
+  background: rgba(0, 0, 0, 0.32);
+  transform: skewX(-22deg);
+}
+
+.finale-list-enter {
+  opacity: 0;
+  animation: finale-list-slide 760ms cubic-bezier(0.22, 1, 0.36, 1) 5200ms forwards;
+}

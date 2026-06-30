@@ -12,5 +12,7 @@ Vorbereitete Dateinamen:
 - `answer-wrong.mp3`
 - `leaderboard.mp3`
 - `winner.mp3`
+- `victory-music.mp3`
+- `confetti.mp3`
 
 Fehlende Dateien sind erlaubt. Die App faengt Abspielfehler bewusst ab.

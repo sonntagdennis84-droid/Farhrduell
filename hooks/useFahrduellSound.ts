@@ -12,7 +12,9 @@ const soundMap = {
   "answer-correct": "/sounds/answer-correct.mp3",
   "answer-wrong": "/sounds/answer-wrong.mp3",
   leaderboard: "/sounds/leaderboard.mp3",
-  winner: "/sounds/winner.mp3"
+  winner: "/sounds/winner.mp3",
+  "victory-music": "/sounds/victory-music.mp3",
+  confetti: "/sounds/confetti.mp3"
 } as const;
 
 type ToneStep = { frequency: number; durationMs: number; gain?: number; type?: OscillatorType };
@@ -43,6 +45,15 @@ const fallbackPatterns: Record<keyof typeof soundMap, ToneStep[]> = {
     { frequency: 659, durationMs: 100, gain: 0.045 },
     { frequency: 784, durationMs: 140, gain: 0.05 },
     { frequency: 1047, durationMs: 180, gain: 0.055 }
+  ],
+  "victory-music": [
+    { frequency: 392, durationMs: 360, gain: 0.026 },
+    { frequency: 523, durationMs: 360, gain: 0.026 },
+    { frequency: 659, durationMs: 520, gain: 0.024 }
+  ],
+  confetti: [
+    { frequency: 1200, durationMs: 45, gain: 0.02, type: "triangle" },
+    { frequency: 1500, durationMs: 55, gain: 0.018, type: "triangle" }
   ]
 };
 
