@@ -9,6 +9,7 @@ export async function GET() {
     hasActiveSession: true,
     sessionId: active.session.id,
     quizTitle: active.quizTitle,
+    participantCount: active.participantCount,
     remoteUrl: `/host/${active.session.id}/remote?app=1`
   });
 }

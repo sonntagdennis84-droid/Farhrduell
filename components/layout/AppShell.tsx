@@ -12,14 +12,17 @@ export function AppShell({ children }: PropsWithChildren) {
             <Logo />
           </Link>
           <nav className="flex gap-3 text-sm font-semibold text-white/80">
+            <Link className="hover:text-show-gold" href="/dashboard">
+              Start
+            </Link>
             <Link className="hover:text-show-gold" href="/quizzes">
-              Quizze
+              Bibliothek
+            </Link>
+            <Link className="hover:text-show-gold" href="/cloud">
+              Cloud
             </Link>
             <Link className="hover:text-show-gold" href="/profile">
               Profil
-            </Link>
-            <Link className="hover:text-show-gold" href="/dashboard">
-              Dashboard
             </Link>
             <form action="/api/auth/logout" method="post">
               <button className="hover:text-show-gold" type="submit">

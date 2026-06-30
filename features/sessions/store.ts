@@ -475,12 +475,13 @@ export async function getActiveSessionForCurrentUser() {
       status: { not: "FINISHED" }
     },
     orderBy: { createdAt: "desc" },
-    include: { quiz: true }
+    include: { quiz: true, _count: { select: { participants: true } } }
   });
   if (!sessionRecord) return null;
   return {
     session: toSession(sessionRecord),
-    quizTitle: sessionRecord.quiz.title
+    quizTitle: sessionRecord.quiz.title,
+    participantCount: sessionRecord._count.participants
   };
 }
 

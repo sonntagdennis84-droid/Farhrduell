@@ -7,8 +7,10 @@ import type { GameMode, Quiz, QuizCategory } from "@/types/domain";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Panel } from "@/components/ui/Panel";
+import { QuizLibraryCard } from "@/components/quiz/QuizLibraryCard";
 
 type StatusFilter = "active" | "archived" | "all";
+const favoriteStorageKey = "fahrduell.favoriteQuizzes";
 
 function averageQuestionTime(quiz: Quiz) {
   if (quiz.questions.length === 0) return 0;
@@ -32,6 +34,7 @@ export default function QuizzesPage() {
   const [teamCount, setTeamCount] = useState(2);
   const [busyQuizId, setBusyQuizId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   async function loadQuizzes() {
     const response = await fetch("/api/quizzes");
@@ -47,6 +50,12 @@ export default function QuizzesPage() {
 
   useEffect(() => {
     loadQuizzes().catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Quizze konnten nicht geladen werden."));
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(favoriteStorageKey) ?? "[]");
+      if (Array.isArray(parsed)) setFavoriteIds(parsed.filter((item) => typeof item === "string"));
+    } catch {
+      setFavoriteIds([]);
+    }
 
     fetch("/api/categories")
       .then((response) => response.json())
@@ -55,6 +64,14 @@ export default function QuizzesPage() {
       })
       .catch(() => undefined);
   }, [router]);
+
+  function toggleFavorite(quizId: string) {
+    setFavoriteIds((items) => {
+      const next = items.includes(quizId) ? items.filter((item) => item !== quizId) : [quizId, ...items];
+      window.localStorage.setItem(favoriteStorageKey, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const visibleQuizzes = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -69,7 +86,7 @@ export default function QuizzesPage() {
 
   async function startSession(quiz: Quiz) {
     if (quiz.isArchived) {
-      setError("Archivierte Quizze können nicht gestartet werden.");
+      setError("Archivierte Quizze kÃ¶nnen nicht gestartet werden.");
       return;
     }
     const response = await fetch("/api/sessions", {
@@ -131,7 +148,7 @@ export default function QuizzesPage() {
     const result = await response.json().catch(() => null);
     setBusyQuizId(null);
     if (!response.ok) {
-      setError(result?.error ?? "Status konnte nicht geändert werden.");
+      setError(result?.error ?? "Status konnte nicht geÃ¤ndert werden.");
       return;
     }
     setQuizzes((items) => items.map((item) => (item.id === result.id ? result : item)));
@@ -142,10 +159,14 @@ export default function QuizzesPage() {
     <AppShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-4xl font-black">Quizze</h1>
-          <p className="mt-2 text-white/70">Suchen, prüfen, duplizieren und erst aus der Vorschau starten.</p>
+          <p className="text-sm font-black uppercase text-show-gold">Bibliothek</p>
+          <h1 className="mt-1 text-4xl font-black">Quizbibliothek</h1>
+          <p className="mt-2 text-white/70">Suchen, favorisieren, prüfen und direkt aus der Vorschau starten.</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Link className="rounded border border-white/20 px-5 py-3 font-black hover:border-show-gold hover:text-show-gold" href="/dashboard">
+            Start
+          </Link>
           <Link className="rounded border border-white/20 px-5 py-3 font-black hover:border-show-gold hover:text-show-gold" href="/quizzes/import">
             Import
           </Link>
@@ -182,39 +203,20 @@ export default function QuizzesPage() {
 
       {error && <p className="mt-4 rounded border border-show-red/30 bg-show-red/10 p-3 font-bold text-show-red">{error}</p>}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleQuizzes.map((quiz) => (
-          <Panel key={quiz.id} className={quiz.isArchived ? "opacity-75" : ""}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-black">{quiz.title}</h2>
-                <p className="mt-2 min-h-12 text-white/70">{quiz.description}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <span className="rounded border border-show-gold/30 bg-show-gold/10 px-3 py-2 text-xs font-black uppercase text-show-gold">{quiz.category?.name ?? "Ohne Kategorie"}</span>
-                {quiz.isArchived && <span className="rounded border border-white/15 bg-white/10 px-3 py-1 text-xs font-black uppercase text-white/65">Archiviert</span>}
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold text-white/70">
-              <span>{quiz.questions.length} Fragen</span>
-              <span>Ø {averageQuestionTime(quiz)} Sekunden</span>
-              <span>{hasMedia(quiz) ? "Medien vorhanden" : "Ohne Medien"}</span>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <PrimaryButton disabled={quiz.isArchived} onClick={() => setPreviewQuiz(quiz)}>
-                Vorschau
-              </PrimaryButton>
-              <Link className="rounded border border-white/20 px-4 py-2.5 font-bold" href={`/quizzes/${quiz.id}/edit`}>
-                Bearbeiten
-              </Link>
-              <button className="rounded border border-white/20 px-4 py-2.5 font-bold hover:border-show-gold hover:text-show-gold" disabled={busyQuizId === quiz.id} onClick={() => duplicateQuiz(quiz)} type="button">
-                Duplizieren
-              </button>
-              <button className="rounded border border-white/20 px-4 py-2.5 font-bold hover:border-show-gold hover:text-show-gold" disabled={busyQuizId === quiz.id} onClick={() => archiveQuiz(quiz, !quiz.isArchived)} type="button">
-                {quiz.isArchived ? "Wiederherstellen" : "Archivieren"}
-              </button>
-            </div>
-          </Panel>
+          <div key={quiz.id} className={quiz.isArchived ? "opacity-75" : ""}>
+            <QuizLibraryCard
+              quiz={quiz}
+              favorite={favoriteIds.includes(quiz.id)}
+              onFavorite={() => toggleFavorite(quiz.id)}
+              onPreview={() => setPreviewQuiz(quiz)}
+              onDuplicate={() => duplicateQuiz(quiz)}
+            />
+            <button className="mt-2 w-full rounded border border-white/10 px-4 py-2 text-sm font-black text-white/55 hover:border-show-gold hover:text-show-gold" disabled={busyQuizId === quiz.id} onClick={() => archiveQuiz(quiz, !quiz.isArchived)} type="button">
+              {quiz.isArchived ? "Wiederherstellen" : "Archivieren"}
+            </button>
+          </div>
         ))}
       </div>
 
@@ -235,7 +237,7 @@ export default function QuizzesPage() {
                 <p className="mt-2 text-white/70">{previewQuiz.description}</p>
               </div>
               <button className="rounded border border-white/20 px-4 py-2 font-bold" onClick={() => setPreviewQuiz(null)} type="button">
-                Schließen
+                SchlieÃŸen
               </button>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-4">
@@ -249,7 +251,7 @@ export default function QuizzesPage() {
               </div>
               <div className="rounded border border-white/10 bg-black/20 p-3">
                 <p className="text-xs font-black uppercase text-white/45">Fragedauer</p>
-                <p className="mt-1 font-black">Ø {averageQuestionTime(previewQuiz)} s</p>
+                <p className="mt-1 font-black">Ã˜ {averageQuestionTime(previewQuiz)} s</p>
               </div>
               <div className="rounded border border-white/10 bg-black/20 p-3">
                 <p className="text-xs font-black uppercase text-white/45">Medien</p>
@@ -263,7 +265,7 @@ export default function QuizzesPage() {
                   { value: "classic", label: "Classic", text: "Normales Quiz mit Einzelwertung." },
                   { value: "team_battle", label: "Team Battle", text: "Teilnehmer werden automatisch Teams zugeordnet." },
                   { value: "knockout", label: "K.O.-Modus", text: "Falsche oder fehlende Antwort scheidet aus." },
-                  { value: "survival", label: "Überleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
+                  { value: "survival", label: "Ãœberleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
                 ].map((mode) => (
                   <button
                     key={mode.value}
@@ -290,7 +292,7 @@ export default function QuizzesPage() {
                     {index + 1}. {question.questionText}
                   </p>
                   <p className="mt-1 text-sm text-white/55">
-                    {question.timeLimitSeconds}s · Antwort {question.correctAnswer} · {question.mediaUrl ? "mit Medium" : "ohne Medium"}
+                    {question.timeLimitSeconds}s Â· Antwort {question.correctAnswer} Â· {question.mediaUrl ? "mit Medium" : "ohne Medium"}
                   </p>
                 </div>
               ))}
@@ -309,3 +311,4 @@ export default function QuizzesPage() {
     </AppShell>
   );
 }
+

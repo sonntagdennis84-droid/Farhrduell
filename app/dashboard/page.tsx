@@ -1,42 +1,27 @@
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { InstallAppButton } from "@/components/InstallAppButton";
-import { Panel } from "@/components/ui/Panel";
-import { listQuizzes } from "@/features/sessions/store";
+import { DashboardClient } from "@/components/dashboard/DashboardClient";
+import { getActiveSessionForCurrentUser, listQuizzes } from "@/features/sessions/store";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const quizzes = await listQuizzes();
+  const [quizzes, active] = await Promise.all([listQuizzes(), getActiveSessionForCurrentUser()]);
+
   return (
     <AppShell>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-black">Dashboard</h1>
-          <p className="mt-2 text-white/65">Moderator-App, Quizverwaltung und Live-Start an einem Ort.</p>
-        </div>
-        <InstallAppButton />
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <Link href="/quizzes/new">
-          <Panel className="h-full hover:border-show-gold">
-            <h2 className="text-xl font-black text-show-gold">Quiz erstellen</h2>
-            <p className="mt-2 text-white/70">Fragen, Antworten und Zeitlimit pflegen.</p>
-          </Panel>
-        </Link>
-        <Link href="/quizzes">
-          <Panel className="h-full hover:border-show-gold">
-            <h2 className="text-xl font-black text-show-gold">Quiz starten</h2>
-            <p className="mt-2 text-white/70">{quizzes.length} Quiz verfügbar.</p>
-          </Panel>
-        </Link>
-        <Link href="/profile">
-          <Panel className="h-full hover:border-show-gold">
-            <h2 className="text-xl font-black text-show-gold">Profil</h2>
-            <p className="mt-2 text-white/70">Eigenes Profil pflegen und als Admin neue Moderatoren anlegen.</p>
-          </Panel>
-        </Link>
-      </div>
+      <DashboardClient
+        quizzes={quizzes}
+        activeSession={
+          active
+            ? {
+                sessionId: active.session.id,
+                quizTitle: active.quizTitle,
+                participantCount: active.participantCount,
+                remoteUrl: `/host/${active.session.id}/remote?app=1`
+              }
+            : null
+        }
+      />
     </AppShell>
   );
 }
