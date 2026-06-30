@@ -127,7 +127,12 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
                 {preview ? "Warte auf Freigabe" : active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
               </p>
             </div>
-            {question && !preview && <TimerRing secondsLeft={active ? secondsLeft : question.timeLimitSeconds} totalSeconds={question.timeLimitSeconds} />}
+            {question && active && <TimerRing secondsLeft={secondsLeft} totalSeconds={question.timeLimitSeconds} />}
+            {question && locked && !revealed && (
+              <div className="rounded-lg border border-show-gold/35 bg-show-gold/10 px-4 py-3 text-center text-sm font-black uppercase text-show-gold">
+                {selected ? "Antwort abgegeben" : "Gesperrt"}
+              </div>
+            )}
           </div>
 
           <div className="stage-answer-grid mt-5 grid flex-1 content-center gap-3">
