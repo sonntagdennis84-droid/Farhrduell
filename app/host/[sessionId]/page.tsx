@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { currentUserCanHostSession, getSessionBundle } from "@/features/sessions/store";
+import { buildAnonymousAnswerStats, currentUserCanHostSession, getSessionBundle } from "@/features/sessions/store";
 import { HostClient } from "./HostClient";
 
 export default async function HostPage({ params }: { params: Promise<{ sessionId: string }> }) {
@@ -10,7 +10,7 @@ export default async function HostPage({ params }: { params: Promise<{ sessionId
   if (!bundle) notFound();
   return (
     <AppShell>
-      <HostClient initialBundle={bundle} />
+      <HostClient initialBundle={bundle} initialAnswerStats={buildAnonymousAnswerStats(bundle)} />
     </AppShell>
   );
 }

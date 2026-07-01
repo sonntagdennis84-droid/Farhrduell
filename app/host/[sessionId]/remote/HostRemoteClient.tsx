@@ -327,7 +327,7 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             {(active || locked || revealed) && heatmap && (
               <RemoteButton
                 icon={<Users size={24} />}
-                label={session.showParticipantAnswerStats ? "Stimmen bei Teilnehmern ausblenden" : "Stimmen bei Teilnehmern zeigen"}
+                label={session.showParticipantAnswerStats ? "Stimmen im Quiz ausblenden" : "Stimmen im Quiz anzeigen"}
                 onClick={() => action("participant-answer-stats")}
                 tone="secondary"
               />

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import type { GameSession, LeaderboardRow, Participant, Question, Quiz, TeamLeaderboardRow } from "@/types/domain";
+import type { AnswerOption, GameSession, LeaderboardRow, Participant, Question, Quiz, TeamLeaderboardRow } from "@/types/domain";
 import { AnswerButton } from "@/components/quiz/AnswerButton";
 import { Leaderboard } from "@/components/quiz/Leaderboard";
 import { TeamLeaderboard } from "@/components/quiz/TeamLeaderboard";
@@ -16,6 +16,10 @@ import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
 
 type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; leaderboard: LeaderboardRow[]; teamLeaderboard: TeamLeaderboardRow[] };
+type AnonymousAnswerStats = {
+  questionId: string;
+  counts: Record<AnswerOption | "pending", number>;
+};
 
 function QuestionMedia({ question, large = false }: { question: Question; large?: boolean }) {
   if (!question.mediaUrl || question.mediaType === "none") return null;
@@ -75,7 +79,7 @@ function remainingSeconds(session: GameSession, question: Question) {
   return Math.max(Math.ceil(question.timeLimitSeconds - elapsedMs / 1000), 0);
 }
 
-export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
+export function HostClient({ initialBundle, initialAnswerStats }: { initialBundle: Bundle; initialAnswerStats: AnonymousAnswerStats | null }) {
   const [session, setSession] = useState(initialBundle.session);
   const [participants, setParticipants] = useState(initialBundle.participants);
   const [leaderboard, setLeaderboard] = useState(initialBundle.leaderboard);
@@ -84,6 +88,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [welcomeQueue, setWelcomeQueue] = useState<string[]>([]);
   const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
   const [introCountdown, setIntroCountdown] = useState(3);
+  const [answerStats, setAnswerStats] = useState<AnonymousAnswerStats | null>(initialBundle.session.showParticipantAnswerStats ? initialAnswerStats : null);
   const countdownWarningPlayedRef = useRef<string | null>(null);
   const introCountdownFinishedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
@@ -110,6 +115,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       setLeaderboard(bundle.leaderboard);
       setTeamLeaderboard(bundle.teamLeaderboard);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
+      setAnswerStats(null);
       countdownWarningPlayedRef.current = null;
       playSound("question-start");
     });
@@ -119,6 +125,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       setLeaderboard(bundle.leaderboard);
       setTeamLeaderboard(bundle.teamLeaderboard);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
+      if (!bundle.session.showParticipantAnswerStats) setAnswerStats(null);
     });
     socket.on("leaderboard_updated", (rows) => setLeaderboard(rows));
     socket.on("participant_joined", (participant: Participant) => {
@@ -131,6 +138,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
       setTeamLeaderboard(bundle.teamLeaderboard);
       playSound("answer-correct");
     });
+    socket.on("participant_answer_stats_updated", (stats: AnonymousAnswerStats | null) => setAnswerStats(stats));
     socket.on("quiz_finished", (bundle: Bundle) => {
       setSession(bundle.session);
       setParticipants(bundle.participants);
@@ -211,6 +219,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
     setParticipants(bundle.participants);
     setLeaderboard(bundle.leaderboard);
     setTeamLeaderboard(bundle.teamLeaderboard);
+    if (!bundle.session.showParticipantAnswerStats) setAnswerStats(null);
   }
 
   if (!question) {
@@ -317,7 +326,7 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   }
 
   return (
-    <div>
+    <div className="relative pb-36">
       <section className="stage-panel rounded-lg border border-white/10 bg-show-panel/90 p-6">
         {activeWelcome && (
           <div className="mb-5 rounded-lg border border-show-gold/40 bg-show-gold/12 px-5 py-4 shadow-glow">
@@ -379,6 +388,30 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
           </button>
         </div>
       </section>
+      {session.showParticipantAnswerStats && answerStats && (
+        <aside className="fixed inset-x-4 bottom-4 z-30 mx-auto max-w-6xl animate-in slide-in-from-bottom-6 duration-500">
+          <div className="rounded-lg border border-show-gold/45 bg-show-navy/95 p-4 shadow-glow backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black uppercase text-show-gold">Stimmenverteilung</p>
+                <p className="text-sm font-bold text-white/55">Anonymisiert, nur Anzahl pro Antwort</p>
+              </div>
+              <div className="rounded border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-white/65">Noch offen: {answerStats.counts.pending ?? 0}</div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              {(["A", "B", "C", "D"] as const).map((option) => (
+                <div key={option} className="grid grid-cols-[3.5rem_1fr] items-center gap-3 rounded-lg border border-white/10 bg-black/25 p-3">
+                  <span className="grid h-12 w-12 place-items-center rounded border border-show-gold/45 bg-show-gold/15 text-2xl font-black text-show-gold">{option}</span>
+                  <div>
+                    <p className="text-xs font-black uppercase text-white/45">Stimmen</p>
+                    <p className="text-4xl font-black text-white">{answerStats.counts[option] ?? 0}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
