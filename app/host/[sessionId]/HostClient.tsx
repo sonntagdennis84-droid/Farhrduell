@@ -372,20 +372,13 @@ export function HostClient({ initialBundle, initialAnswerStats }: { initialBundl
         {explanationVisible && <ExplanationPanel question={question} />}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <a className="inline-flex min-h-11 items-center justify-center rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" href={`/host/${session.id}/remote`} target="_blank">
-            Handy-Fernbedienung
-          </a>
           {!active && !locked && !revealed && !preview && <PrimaryButton onClick={() => action("start")}>Frage anzeigen</PrimaryButton>}
           {preview && <PrimaryButton onClick={() => action("timer")}>Timer starten</PrimaryButton>}
           {preview && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Frage überspringen</button>}
           {active && <PrimaryButton onClick={() => action("lock")}>Antworten sperren</PrimaryButton>}
-          {locked && <PrimaryButton onClick={() => action("reveal")}>Antwort auflösen</PrimaryButton>}
           {revealed && !explanationVisible && <PrimaryButton onClick={() => action("explanation")}>Erklärung anzeigen</PrimaryButton>}
           {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("leaderboard")}>Punktestand einblenden</button>}
           {revealed && <button className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" onClick={() => action("next")}>Nächste Frage starten</button>}
-          <button className="rounded border border-white/20 px-5 py-3 font-bold" onClick={() => action("finish")}>
-            Quiz beenden
-          </button>
         </div>
       </section>
       {session.showParticipantAnswerStats && answerStats && (
