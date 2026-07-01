@@ -1,38 +1,45 @@
-import Link from "next/link";
+import { Suspense } from "react";
+import { HomeLoginForm } from "@/components/auth/HomeLoginForm";
 import { StartScreenMusic } from "@/components/StartScreenMusic";
 
 export default function Home() {
   return (
-    <main className="show-grid flex min-h-screen items-center">
-      <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-        <section>
-          <img className="h-auto w-full max-w-[20rem]" src="/branding/fahrduell-home-logo.png" alt="Fahrduell" />
-          <h1 className="mt-10 max-w-3xl text-5xl font-black leading-tight text-white md:text-7xl">Fahrduell</h1>
-          <p className="mt-5 max-w-2xl text-xl text-white/78">
-            Die installierbare Moderator-App für Live-Unterricht mit Smartboard, Teilnehmer-Handys und Showmaster-Steuerung.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link className="rounded border border-show-gold bg-show-gold px-6 py-3 font-black text-show-navy shadow-glow" href="/login">
-              Login
-            </Link>
-            <Link className="rounded border border-white/20 px-6 py-3 font-bold text-white hover:border-show-gold" href="/dashboard">
-              Zum Dashboard
-            </Link>
+    <main className="show-grid min-h-screen">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6">
+        <header className="grid gap-5 lg:grid-cols-[minmax(18rem,32rem)_minmax(24rem,1fr)] lg:items-start">
+          <img className="h-auto w-full max-w-[30rem]" src="/branding/fahrduell-logo-tacho.png" alt="Fahrduell" />
+          <div className="lg:justify-self-end">
+            <Suspense fallback={<div className="rounded-lg border border-white/10 bg-show-panel/95 p-4 shadow-2xl">Login wird geladen...</div>}>
+              <HomeLoginForm />
+            </Suspense>
           </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <StartScreenMusic />
+        </header>
+
+        <section className="grid flex-1 gap-8 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-show-gold">Das Fahrlehrer-Quiz</p>
+            <h1 className="mt-4 max-w-4xl text-5xl font-black leading-tight text-white md:text-7xl">
+              Live-Unterricht, der sich wie eine Quizshow anfühlt.
+            </h1>
+            <p className="mt-6 max-w-3xl text-xl leading-relaxed text-white/75">
+              Fahrduell verbindet Smartboard, Teilnehmer-Smartphones und Moderator-App zu einer schnellen, motivierenden Quizoberfläche für Fahrschulen.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <StartScreenMusic />
+            </div>
           </div>
-          <p className="mt-4 max-w-2xl text-sm font-semibold text-white/58">
-            Auf Android in Chrome öffnen und zum Startbildschirm hinzufügen. Danach kann der Moderator direkt in die App und braucht keinen separaten QR-Code mehr.
-          </p>
-        </section>
-        <section className="rounded-lg border border-white/10 bg-show-panel/90 p-6 shadow-2xl">
-          <div className="text-sm font-bold uppercase text-show-gold">App bereit</div>
-          <div className="mt-5 grid gap-3">
-            {["Android installierbar", "Moderator ohne QR direkt im Dashboard", "Bild, Ton und Video vorbereitet", "Remote-Steuerung auf dem Handy"].map((item) => (
-              <div key={item} className="rounded border border-white/10 bg-white/5 p-4 text-lg font-bold">
-                {item}
-              </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { title: "Live-Quiz", text: "Fragen starten, Antworten sperren, auflösen und den Punktestand gezielt einblenden." },
+              { title: "Smartphone-Teilnahme", text: "Teilnehmer treten per QR-Code bei und antworten mobil mit großen Farbfeldern." },
+              { title: "Moderator-App", text: "Steuerung vom Handy aus, inklusive Fernbedienung, Heatmap und Stimmenverteilung." },
+              { title: "Quizverwaltung", text: "Quizze erstellen, importieren, kategorisieren, duplizieren und für den Unterricht vorbereiten." }
+            ].map((item) => (
+              <article key={item.title} className="rounded-lg border border-white/10 bg-show-panel/85 p-5 shadow-xl">
+                <h2 className="text-xl font-black text-show-gold">{item.title}</h2>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-white/65">{item.text}</p>
+              </article>
             ))}
           </div>
         </section>

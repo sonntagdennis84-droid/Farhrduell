@@ -1,18 +1,12 @@
 import { redirect } from "next/navigation";
-import { getCurrentUserId } from "@/features/auth/session";
-import { LoginClient } from "@/app/login/LoginClient";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const userId = await getCurrentUserId();
   const params = await searchParams;
   const next = typeof params.next === "string" ? params.next : "";
-  const appMode = typeof params.app === "string" && params.app === "1";
-  const suggestedEmail = typeof params.email === "string" ? params.email : process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? "";
-
-  if (userId) {
-    const target = next && next.startsWith("/") ? next : "/dashboard";
-    redirect(appMode && !target.includes("?") ? `${target}?app=1` : target);
-  }
-
-  return <LoginClient config={{ appMode, suggestedEmail }} />;
+  const app = params.app === "1" ? "app=1" : "";
+  const query = new URLSearchParams();
+  if (next) query.set("next", next);
+  if (app) query.set("app", "1");
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  redirect(`/${suffix}`);
 }

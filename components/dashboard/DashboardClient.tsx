@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { BookOpen, Cloud, Download, Play, Plus, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Quiz } from "@/types/domain";
+import type { GameMode, Quiz } from "@/types/domain";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { QuizLibraryCard } from "@/components/quiz/QuizLibraryCard";
 
@@ -27,6 +27,9 @@ function readFavorites() {
 
 export function DashboardClient({ quizzes, activeSession }: { quizzes: Quiz[]; activeSession: ActiveSession }) {
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [startQuiz, setStartQuiz] = useState<Quiz | null>(null);
+  const [gameMode, setGameMode] = useState<GameMode>("classic");
+  const [teamCount, setTeamCount] = useState(2);
   const activeQuizzes = useMemo(() => quizzes.filter((quiz) => !quiz.isArchived), [quizzes]);
   const favoriteQuizzes = useMemo(() => favorites.map((id) => activeQuizzes.find((quiz) => quiz.id === id)).filter(Boolean) as Quiz[], [activeQuizzes, favorites]);
   const recentQuizzes = useMemo(() => [...activeQuizzes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4), [activeQuizzes]);
@@ -53,7 +56,7 @@ export function DashboardClient({ quizzes, activeSession }: { quizzes: Quiz[]; a
     const response = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quizId: quiz.id, gameMode: "classic" })
+      body: JSON.stringify({ quizId: quiz.id, gameMode, teamCount })
     });
     const result = await response.json().catch(() => null);
     if (response.ok && result?.id) location.href = `/sessions/${result.id}/lobby`;
@@ -131,7 +134,7 @@ export function DashboardClient({ quizzes, activeSession }: { quizzes: Quiz[]; a
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {(favoriteQuizzes.length ? favoriteQuizzes : recentQuizzes.slice(0, 3)).map((quiz) => (
-            <QuizLibraryCard key={quiz.id} quiz={quiz} compact favorite={favorites.includes(quiz.id)} onFavorite={() => toggleFavorite(quiz.id)} onPreview={() => startSession(quiz)} />
+            <QuizLibraryCard key={quiz.id} quiz={quiz} compact favorite={favorites.includes(quiz.id)} onFavorite={() => toggleFavorite(quiz.id)} onPreview={() => setStartQuiz(quiz)} />
           ))}
         </div>
       </section>
@@ -147,6 +150,53 @@ export function DashboardClient({ quizzes, activeSession }: { quizzes: Quiz[]; a
           ))}
         </div>
       </section>
+
+      {startQuiz && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4">
+          <section className="w-full max-w-2xl rounded-lg border border-show-gold/40 bg-show-panel p-5 shadow-glow">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-black uppercase text-show-gold">Quiz starten</p>
+                <h2 className="mt-2 text-3xl font-black">{startQuiz.title}</h2>
+                <p className="mt-2 text-white/65">{startQuiz.questions.length} Fragen</p>
+              </div>
+              <button className="rounded border border-white/20 px-4 py-2 font-bold" onClick={() => setStartQuiz(null)} type="button">
+                Schließen
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              {[
+                { value: "classic", label: "Classic", text: "Normales Quiz mit Einzelwertung." },
+                { value: "team_battle", label: "Team Battle", text: "Teilnehmer werden automatisch Teams zugeordnet." },
+                { value: "knockout", label: "K.O.-Modus", text: "Falsche oder fehlende Antwort scheidet aus." },
+                { value: "survival", label: "Überleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
+              ].map((mode) => (
+                <button
+                  key={mode.value}
+                  className={gameMode === mode.value ? "rounded border border-show-gold bg-show-gold/15 p-3 text-left shadow-glow" : "rounded border border-white/10 bg-white/5 p-3 text-left hover:border-show-gold/60"}
+                  onClick={() => setGameMode(mode.value as GameMode)}
+                  type="button"
+                >
+                  <span className="font-black text-show-gold">{mode.label}</span>
+                  <span className="mt-1 block text-sm font-semibold text-white/65">{mode.text}</span>
+                </button>
+              ))}
+            </div>
+
+            {gameMode === "team_battle" && (
+              <label className="mt-4 block text-sm font-bold text-white/70">
+                Anzahl Teams
+                <input className="mt-2 w-32 rounded border border-white/15 bg-white/10 px-3 py-2 font-black text-white" min={2} max={4} type="number" value={teamCount} onChange={(event) => setTeamCount(Number(event.target.value))} />
+              </label>
+            )}
+
+            <button className="mt-5 w-full rounded border border-show-gold bg-show-gold px-5 py-4 font-black text-show-navy shadow-glow" onClick={() => startSession(startQuiz)} type="button">
+              Live-Session erstellen
+            </button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
