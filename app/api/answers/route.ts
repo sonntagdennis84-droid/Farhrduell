@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildLiveAnswerHeatmap, submitAnswer } from "@/features/sessions/store";
+import { buildAnonymousAnswerStats, buildLiveAnswerHeatmap, submitAnswer } from "@/features/sessions/store";
 import { getIo, moderatorRoom, sessionRoom } from "@/lib/socket";
 
 export async function POST(request: Request) {
@@ -9,6 +9,9 @@ export async function POST(request: Request) {
   if (result.bundle) {
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("answer_submitted", result.answer);
     getIo()?.to(sessionRoom(result.bundle.session.id)).emit("leaderboard_updated", result.bundle.leaderboard);
+    if (result.bundle.session.showParticipantAnswerStats) {
+      getIo()?.to(sessionRoom(result.bundle.session.id)).emit("participant_answer_stats_updated", buildAnonymousAnswerStats(result.bundle));
+    }
     if (result.autoLocked) getIo()?.to(sessionRoom(result.bundle.session.id)).emit("session_updated", result.bundle);
     const heatmap = buildLiveAnswerHeatmap(result.bundle);
     if (heatmap) getIo()?.to(moderatorRoom(result.bundle.session.id)).emit("heatmap_updated", heatmap);

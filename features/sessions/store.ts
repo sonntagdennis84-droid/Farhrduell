@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Answer, AnswerOption, GameSession, LiveAnswerHeatmap, Participant, Question, Quiz, QuizCategory, Team, TeamLeaderboardRow } from "@/types/domain";
 import { buildLeaderboard, calculatePoints } from "@/lib/scoring";
-import { canSubmitAnswer } from "@/lib/session-state";
+import { canSubmitAnswer, isAnswerRevealed } from "@/lib/session-state";
 import { getCurrentUserId } from "@/features/auth/session";
 import { defaultParticipantEmoji, isAllowedParticipantEmoji } from "@/lib/participant-emojis";
 import { defaultAvatarId, normalizeAvatarId } from "@/lib/participant-avatars";
@@ -62,6 +62,7 @@ function toSession(session: any): GameSession {
     status: session.status,
     gameMode: session.gameMode ?? "classic",
     currentQuestionStartedAt: iso(session.currentQuestionStartedAt),
+    blackoutStartedAt: iso(session.blackoutStartedAt),
     startedAt: iso(session.startedAt),
     finishedAt: iso(session.finishedAt),
     createdAt: iso(session.createdAt) ?? new Date().toISOString()
@@ -561,6 +562,15 @@ export function buildLiveAnswerHeatmap(bundle: SessionBundle | null): LiveAnswer
   };
 }
 
+export function buildAnonymousAnswerStats(bundle: SessionBundle | null) {
+  const heatmap = buildLiveAnswerHeatmap(bundle);
+  if (!heatmap) return null;
+  return {
+    questionId: heatmap.questionId,
+    counts: heatmap.counts
+  };
+}
+
 export function allParticipantsAnsweredCurrentQuestion(bundle: SessionBundle | null) {
   if (!bundle) return false;
   const question = bundle.quiz.questions[bundle.session.currentQuestionIndex];
@@ -602,9 +612,94 @@ export async function joinSession(joinCode: string, displayName: string, emoji =
 
 export async function startQuestion(sessionId: string) {
   const prisma = await getPrisma();
+  const bundle = await getSessionBundle(sessionId);
+  if (!bundle) return null;
+
+  if (bundle.session.status === "FINISHED") return bundle;
+
+  if (bundle.session.status === "QUESTION_COUNTDOWN") {
+    await prisma.gameSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "RUNNING",
+        currentQuestionStartedAt: null,
+        showParticipantAnswerStats: false,
+        ...(bundle.session.startedAt ? {} : { startedAt: new Date() })
+      }
+    });
+    return getSessionBundle(sessionId);
+  }
+
+  if (bundle.session.status === "FINAL_QUESTION_INTRO") {
+    await prisma.gameSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "RUNNING",
+        currentQuestionStartedAt: null,
+        showParticipantAnswerStats: false,
+        ...(bundle.session.startedAt ? {} : { startedAt: new Date() })
+      }
+    });
+    return getSessionBundle(sessionId);
+  }
+
+  if (bundle.session.status === "RUNNING" || bundle.session.status === "QUESTION_ACTIVE" || bundle.session.status === "ANSWER_LOCKED" || isAnswerRevealed(bundle.session.status)) {
+    return bundle;
+  }
+
+  const isFirstQuestion = bundle.session.currentQuestionIndex === 0 && !bundle.session.startedAt;
+  const isSingleQuestionQuiz = bundle.quiz.questions.length === 1;
+  const isFinalQuestion = !isSingleQuestionQuiz && bundle.session.currentQuestionIndex >= bundle.quiz.questions.length - 1;
   await prisma.gameSession.update({
     where: { id: sessionId },
-    data: { status: "RUNNING", startedAt: new Date(), currentQuestionStartedAt: null }
+    data: {
+      status: isFirstQuestion ? "QUESTION_COUNTDOWN" : isFinalQuestion ? "FINAL_QUESTION_INTRO" : "RUNNING",
+      ...(bundle.session.startedAt ? {} : { startedAt: new Date() }),
+      showParticipantAnswerStats: false,
+      currentQuestionStartedAt: null
+    }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function toggleParticipantAnswerStats(sessionId: string) {
+  const prisma = await getPrisma();
+  const bundle = await getSessionBundle(sessionId);
+  if (!bundle) return null;
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: { showParticipantAnswerStats: !bundle.session.showParticipantAnswerStats }
+  });
+  return getSessionBundle(sessionId);
+}
+
+export async function toggleBlackout(sessionId: string) {
+  const prisma = await getPrisma();
+  const bundle = await getSessionBundle(sessionId);
+  if (!bundle) return null;
+
+  if (!bundle.session.blackoutActive) {
+    await prisma.gameSession.update({
+      where: { id: sessionId },
+      data: { blackoutActive: true, blackoutStartedAt: new Date(), isTimerPaused: true }
+    });
+    return getSessionBundle(sessionId);
+  }
+
+  const now = new Date();
+  const blackoutStartedAt = bundle.session.blackoutStartedAt ? new Date(bundle.session.blackoutStartedAt) : null;
+  const questionStartedAt = bundle.session.currentQuestionStartedAt ? new Date(bundle.session.currentQuestionStartedAt) : null;
+  const pausedMs = blackoutStartedAt ? Math.max(now.getTime() - blackoutStartedAt.getTime(), 0) : 0;
+  const shiftedQuestionStartedAt = bundle.session.status === "QUESTION_ACTIVE" && questionStartedAt ? new Date(questionStartedAt.getTime() + pausedMs) : undefined;
+
+  await prisma.gameSession.update({
+    where: { id: sessionId },
+    data: {
+      blackoutActive: false,
+      blackoutStartedAt: null,
+      isTimerPaused: false,
+      ...(shiftedQuestionStartedAt ? { currentQuestionStartedAt: shiftedQuestionStartedAt } : {})
+    }
   });
   return getSessionBundle(sessionId);
 }
@@ -725,9 +820,11 @@ export async function nextQuestion(sessionId: string) {
       data: { status: "FINISHED", finishedAt: new Date(), currentQuestionStartedAt: null }
     });
   } else {
+    const nextQuestionIndex = bundle.session.currentQuestionIndex + 1;
+    const isFinalQuestion = bundle.quiz.questions.length > 1 && nextQuestionIndex >= bundle.quiz.questions.length - 1;
     await prisma.gameSession.update({
       where: { id: sessionId },
-      data: { currentQuestionIndex: bundle.session.currentQuestionIndex + 1, status: "RUNNING", currentQuestionStartedAt: null }
+      data: { currentQuestionIndex: nextQuestionIndex, status: isFinalQuestion ? "FINAL_QUESTION_INTRO" : "RUNNING", currentQuestionStartedAt: null, showParticipantAnswerStats: false }
     });
   }
 

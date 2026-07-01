@@ -15,6 +15,11 @@ function remainingSeconds(session: GameSession, question: Question) {
   return Math.max(Math.ceil(question.timeLimitSeconds - elapsedMs / 1000), 0);
 }
 
+type AnonymousAnswerStats = {
+  questionId: string;
+  counts: Record<AnswerOption | "pending", number>;
+};
+
 export function PlayClient({ participant, session, quiz }: { participant: Participant; session: GameSession; quiz: Quiz }) {
   const [currentSession, setCurrentSession] = useState(session);
   const [currentParticipant, setCurrentParticipant] = useState(participant);
@@ -22,9 +27,12 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
   const [selected, setSelected] = useState<AnswerOption | null>(null);
   const [message, setMessage] = useState("Warte auf den Start.");
   const [connected, setConnected] = useState(false);
+  const [answerStats, setAnswerStats] = useState<AnonymousAnswerStats | null>(null);
   const question: Question | undefined = quiz.questions[currentSession.currentQuestionIndex];
+  const countdown = currentSession.status === "QUESTION_COUNTDOWN";
+  const finalIntro = currentSession.status === "FINAL_QUESTION_INTRO";
   const preview = currentSession.status === "RUNNING";
-  const active = currentSession.status === "QUESTION_ACTIVE";
+  const active = currentSession.status === "QUESTION_ACTIVE" && !currentSession.isTimerPaused;
   const locked = isAnswerLocked(currentSession.status);
   const revealed = isAnswerRevealed(currentSession.status);
   const eliminated = Boolean(currentParticipant.isEliminated);
@@ -48,6 +56,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
       if (updatedParticipant) setCurrentParticipant(updatedParticipant);
       setSelected(null);
       setMessage("");
+      setAnswerStats(null);
       setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
     });
     socket.on("session_updated", (bundle) => {
@@ -59,14 +68,25 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
       if (bundle.session.status === "EXPLANATION_VISIBLE") setMessage("Erklärung eingeblendet.");
       if (bundle.session.status === "RUNNING") {
         setSelected(null);
+        setAnswerStats(null);
         setMessage("Warte auf Antwortfreigabe.");
+      }
+      if (bundle.session.status === "QUESTION_COUNTDOWN") {
+        setSelected(null);
+        setMessage("Quiz startet gleich.");
+      }
+      if (bundle.session.status === "FINAL_QUESTION_INTRO") {
+        setSelected(null);
+        setMessage("Achtung letzte Frage.");
       }
       if (bundle.session.status === "QUESTION_ACTIVE") {
         setSelected(null);
         setMessage("");
         setSecondsLeft(remainingSeconds(bundle.session, bundle.quiz.questions[bundle.session.currentQuestionIndex]));
       }
+      if (!bundle.session.showParticipantAnswerStats) setAnswerStats(null);
     });
+    socket.on("participant_answer_stats_updated", (stats: AnonymousAnswerStats | null) => setAnswerStats(stats));
     socket.on("question_revealed", (bundle) => {
       setCurrentSession(bundle.session);
       const updatedParticipant = bundle.participants?.find((item: Participant) => item.id === participant.id);
@@ -124,7 +144,7 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
                 Frage {question ? currentSession.currentQuestionIndex + 1 : 0} von {quiz.questions.length}
               </p>
               <p className="mt-2 text-xs font-black uppercase text-white/55">
-                {preview ? "Warte auf Freigabe" : active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
+                {countdown ? "Startet gleich" : finalIntro ? "Letzte Frage" : preview ? "Warte auf Freigabe" : active ? "Antwortphase" : locked && !revealed ? "Gesperrt" : revealed ? "Auflösung" : "Warten"}
               </p>
             </div>
             {question && active && <TimerRing secondsLeft={secondsLeft} totalSeconds={question.timeLimitSeconds} />}
@@ -136,7 +156,27 @@ export function PlayClient({ participant, session, quiz }: { participant: Partic
           </div>
 
           <div className="stage-answer-grid mt-5 grid flex-1 content-center gap-3">
-            {!preview && answerTexts &&
+            {currentSession.showParticipantAnswerStats && answerStats && (
+              <div className="rounded-lg border border-show-gold/35 bg-show-gold/10 p-4">
+                <p className="text-center text-sm font-black uppercase text-show-gold">Stimmenverteilung</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {(["A", "B", "C", "D"] as const).map((option) => (
+                    <div key={option} className="rounded-lg border border-white/10 bg-black/25 px-4 py-3 text-center">
+                      <p className="text-sm font-black text-white/55">Antwort {option}</p>
+                      <p className="mt-1 text-4xl font-black text-show-gold">{answerStats.counts[option] ?? 0}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-center text-sm font-bold text-white/60">Noch offen: {answerStats.counts.pending ?? 0}</p>
+              </div>
+            )}
+            {(countdown || finalIntro) && (
+              <div className="rounded-lg border border-show-gold/35 bg-show-gold/10 px-5 py-8 text-center">
+                <p className="text-2xl font-black text-show-gold">{finalIntro ? "Achtung letzte Frage" : "Quiz startet gleich"}</p>
+                <p className="mt-2 text-sm font-bold text-white/60">Schau bitte auf den Hauptbildschirm.</p>
+              </div>
+            )}
+            {!preview && !countdown && !finalIntro && answerTexts &&
               (["A", "B", "C", "D"] as const).map((option) => (
                 <div key={option} className={revealed && option === question?.correctAnswer ? "rounded-lg ring-4 ring-show-gold" : ""}>
                   <AnswerButton

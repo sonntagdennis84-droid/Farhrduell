@@ -10,6 +10,7 @@ import { ParticipantAvatar } from "@/components/quiz/ParticipantAvatar";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SoundToggleButton } from "@/components/ui/SoundToggleButton";
 import { TimerRing } from "@/components/quiz/TimerRing";
+import { Logo } from "@/components/ui/Logo";
 import { useFahrduellSound } from "@/hooks/useFahrduellSound";
 import { gameModeLabel, isEliminationGameMode } from "@/lib/game-modes";
 import { isAnswerRevealed, isExplanationVisible, isLeaderboardVisible } from "@/lib/session-state";
@@ -82,10 +83,15 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [welcomeQueue, setWelcomeQueue] = useState<string[]>([]);
   const [activeWelcome, setActiveWelcome] = useState<string | null>(null);
+  const [introCountdown, setIntroCountdown] = useState(3);
   const countdownWarningPlayedRef = useRef<string | null>(null);
+  const introCountdownFinishedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
+  const countdown = session.status === "QUESTION_COUNTDOWN";
+  const finalIntro = session.status === "FINAL_QUESTION_INTRO";
   const preview = session.status === "RUNNING";
-  const active = session.status === "QUESTION_ACTIVE";
+  const blackoutActive = Boolean(session.blackoutActive);
+  const active = session.status === "QUESTION_ACTIVE" && !blackoutActive && !session.isTimerPaused;
   const locked = session.status === "ANSWER_LOCKED";
   const revealed = isAnswerRevealed(session.status);
   const explanationVisible = isExplanationVisible(session.status);
@@ -148,6 +154,32 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
   }, [activeWelcome, welcomeQueue]);
 
   useEffect(() => {
+    if (!countdown || !question || blackoutActive) return;
+    const countdownKey = `${session.id}:${question.id}:${session.currentQuestionIndex}`;
+    setIntroCountdown(3);
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      setIntroCountdown(Math.max(3 - elapsedSeconds, 1));
+    }, 150);
+    const timeout = window.setTimeout(async () => {
+      if (introCountdownFinishedRef.current === countdownKey) return;
+      introCountdownFinishedRef.current = countdownKey;
+      const response = await fetch(`/api/sessions/${session.id}/start`, { method: "POST" });
+      if (!response.ok) return;
+      const bundle = await response.json();
+      setSession(bundle.session);
+      setParticipants(bundle.participants);
+      setLeaderboard(bundle.leaderboard);
+      setTeamLeaderboard(bundle.teamLeaderboard);
+    }, 3000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [blackoutActive, countdown, question, session.currentQuestionIndex, session.id]);
+
+  useEffect(() => {
     if (!active || !question) return;
     setSecondsLeft(remainingSeconds(session, question));
     const interval = window.setInterval(() => {
@@ -183,6 +215,50 @@ export function HostClient({ initialBundle }: { initialBundle: Bundle }) {
 
   if (!question) {
     return <PrimaryButton onClick={() => (location.href = `/results/${session.id}`)}>Zum Ergebnis</PrimaryButton>;
+  }
+
+  if (blackoutActive) {
+    return (
+      <main className="show-grid min-h-[calc(100svh-2rem)] place-items-center overflow-hidden rounded-lg border border-white/10 bg-show-navy/95 p-8 text-center shadow-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.16),transparent_36%),linear-gradient(135deg,rgba(37,99,235,0.16),transparent_45%)]" />
+        <section className="relative z-10 max-w-3xl">
+          <div className="mx-auto flex justify-center">
+            <Logo />
+          </div>
+          <h1 className="mt-10 text-5xl font-black text-white md:text-7xl">Bitte kurz zuhören</h1>
+          <p className="mt-5 text-2xl font-bold text-show-gold">Der Moderator erklärt die Situation.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (finalIntro) {
+    return (
+      <main className="show-grid min-h-[calc(100svh-2rem)] place-items-center rounded-lg border border-show-gold/40 bg-show-panel/95 p-8 text-center shadow-glow">
+        <section className="max-w-4xl">
+          <p className="text-xl font-black uppercase text-show-gold">Finale</p>
+          <h1 className="mt-5 text-6xl font-black leading-tight text-white md:text-8xl">Achtung letzte Frage</h1>
+          <p className="mt-6 text-2xl font-bold text-white/75">Jetzt zählt jede Antwort.</p>
+          <div className="mt-10 flex justify-center">
+            <PrimaryButton onClick={() => action("start")}>Letzte Frage anzeigen</PrimaryButton>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (countdown) {
+    return (
+      <main className="show-grid min-h-[calc(100svh-2rem)] place-items-center rounded-lg border border-show-gold/40 bg-show-panel/95 p-8 text-center shadow-glow">
+        <section>
+          <p className="text-xl font-black uppercase text-show-gold">Quiz startet</p>
+          <div className="mt-8 grid h-56 w-56 place-items-center rounded-full border-4 border-show-gold bg-show-gold/15 text-9xl font-black text-show-gold shadow-glow md:h-72 md:w-72 md:text-[11rem]">
+            {introCountdown}
+          </div>
+          <p className="mt-8 text-3xl font-black text-white">Macht euch bereit</p>
+        </section>
+      </main>
+    );
   }
 
   if (scoreboardVisible) {

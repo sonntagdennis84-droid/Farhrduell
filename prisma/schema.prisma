@@ -14,6 +14,8 @@ enum Role {
 
 enum SessionStatus {
   LOBBY
+  QUESTION_COUNTDOWN
+  FINAL_QUESTION_INTRO
   RUNNING
   QUESTION_ACTIVE
   ANSWER_LOCKED
@@ -112,6 +114,9 @@ model GameSession {
   gameMode             String        @default("classic")
   currentQuestionIndex Int           @default(0)
   currentQuestionStartedAt DateTime?
+  blackoutActive      Boolean       @default(false)
+  blackoutStartedAt   DateTime?
+  showParticipantAnswerStats Boolean @default(false)
   enableJokers         Boolean       @default(false)
   jokerLimitPerParticipant Int       @default(1)
   isTimerPaused        Boolean       @default(false)

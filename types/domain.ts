@@ -3,6 +3,8 @@ export type AnswerOption = "A" | "B" | "C" | "D";
 export type GameMode = "classic" | "team_battle" | "knockout" | "survival";
 export type SessionStatus =
   | "LOBBY"
+  | "QUESTION_COUNTDOWN"
+  | "FINAL_QUESTION_INTRO"
   | "RUNNING"
   | "QUESTION_ACTIVE"
   | "ANSWER_LOCKED"
@@ -74,6 +76,9 @@ export type GameSession = {
   gameMode?: GameMode | string;
   currentQuestionIndex: number;
   currentQuestionStartedAt?: string | null;
+  blackoutActive?: boolean;
+  blackoutStartedAt?: string | null;
+  showParticipantAnswerStats?: boolean;
   enableJokers?: boolean;
   jokerLimitPerParticipant?: number;
   isTimerPaused?: boolean;

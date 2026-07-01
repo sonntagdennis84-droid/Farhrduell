@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BookOpen, Eye, Flag, Lock, Play, SkipForward, Trophy } from "lucide-react";
+import { BookOpen, Eye, EyeOff, Flag, Lock, Play, SkipForward, Trophy, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
@@ -17,6 +17,8 @@ type Bundle = { session: GameSession; quiz: Quiz; participants: Participant[]; l
 
 const statusLabel: Record<string, string> = {
   LOBBY: "Lobby",
+  QUESTION_COUNTDOWN: "Countdown",
+  FINAL_QUESTION_INTRO: "Letzte Frage",
   RUNNING: "Frage bereit",
   QUESTION_ACTIVE: "Antwortphase",
   ANSWER_LOCKED: "Gesperrt",
@@ -50,11 +52,17 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [heatmap, setHeatmap] = useState<LiveAnswerHeatmap | null>(initialHeatmap);
   const [allAnswersNotice, setAllAnswersNotice] = useState(false);
+  const [showLiveAnswers, setShowLiveAnswers] = useState(false);
+  const [introCountdown, setIntroCountdown] = useState(3);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const previousStatusRef = useRef(session.status);
+  const introCountdownFinishedRef = useRef<string | null>(null);
   const question = initialBundle.quiz.questions[session.currentQuestionIndex];
+  const countdown = session.status === "QUESTION_COUNTDOWN";
+  const finalIntro = session.status === "FINAL_QUESTION_INTRO";
   const preview = session.status === "RUNNING";
-  const active = session.status === "QUESTION_ACTIVE";
+  const blackoutActive = Boolean(session.blackoutActive);
+  const active = session.status === "QUESTION_ACTIVE" && !blackoutActive && !session.isTimerPaused;
   const locked = session.status === "ANSWER_LOCKED";
   const revealed = isAnswerRevealed(session.status);
   const explanationVisible = isExplanationVisible(session.status);
@@ -115,6 +123,31 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
       socket.disconnect();
     };
   }, [haptic, playSound, session.id]);
+
+  useEffect(() => {
+    if (!countdown || !question || blackoutActive) return;
+    const countdownKey = `${session.id}:${question.id}:${session.currentQuestionIndex}`;
+    setIntroCountdown(3);
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      setIntroCountdown(Math.max(3 - elapsedSeconds, 1));
+    }, 150);
+    const timeout = window.setTimeout(async () => {
+      if (introCountdownFinishedRef.current === countdownKey) return;
+      introCountdownFinishedRef.current = countdownKey;
+      const response = await fetch(`/api/sessions/${session.id}/start`, { method: "POST" });
+      if (!response.ok) return;
+      const bundle = await response.json();
+      setSession(bundle.session);
+      setParticipants(bundle.participants);
+      setLeaderboard(bundle.leaderboard);
+    }, 3000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [blackoutActive, countdown, question, session.currentQuestionIndex, session.id]);
 
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
@@ -187,11 +220,29 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
             </div>
           )}
 
+          {blackoutActive && (
+            <div className="mt-4 rounded-lg border border-show-gold/50 bg-show-gold/15 px-4 py-3 text-sm font-black text-show-gold shadow-glow">
+              Blackout ist aktiv: Der Beamer zeigt nur das Fahrduell-Logo.
+            </div>
+          )}
+
           <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-4">
             <p className="text-xs font-black uppercase text-white/45">
               Frage {session.currentQuestionIndex + 1} von {initialBundle.quiz.questions.length}
             </p>
-            <p className="stage-body-text mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
+            {finalIntro ? (
+              <div className="mt-3 rounded-lg border border-show-gold/45 bg-show-gold/10 p-4 text-center">
+                <p className="text-sm font-black uppercase text-show-gold">Finale</p>
+                <p className="mt-2 text-2xl font-black">Achtung letzte Frage</p>
+              </div>
+            ) : countdown ? (
+              <div className="mt-3 rounded-lg border border-show-gold/45 bg-show-gold/10 p-4 text-center">
+                <p className="text-sm font-black uppercase text-show-gold">Quiz startet</p>
+                <p className="mt-2 text-6xl font-black text-show-gold">{introCountdown}</p>
+              </div>
+            ) : (
+              <p className="stage-body-text mt-2 text-xl font-black leading-tight">{question?.questionText ?? "Keine Frage geladen"}</p>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded border border-show-gold/30 bg-show-gold/10 px-2 py-1 text-xs font-black uppercase text-show-gold">{gameModeLabel(session.gameMode)}</span>
               {isEliminationGameMode(session.gameMode) && <span className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-black uppercase text-white/70">{activeParticipantCount} aktiv</span>}
@@ -232,6 +283,22 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
               <span className="text-sm font-black uppercase text-white/60">Noch offen</span>
               <span className="text-2xl font-black text-show-gold">{heatmap.counts.pending}</span>
             </div>
+            {showLiveAnswers && (
+              <div className="mt-4 space-y-2">
+                {heatmap.participants.map((participant) => (
+                  <div key={participant.id} className="grid grid-cols-[2.5rem_1fr_3.5rem] items-center gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    <ParticipantAvatar avatarId={participant.avatarId} emoji={participant.emoji} label={participant.displayName} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-white">{participant.displayName}</p>
+                      <p className="text-xs font-bold text-white/45">{participant.hasAnswered ? "Antwort abgegeben" : participant.isEliminated ? "ausgeschieden" : "noch offen"}</p>
+                    </div>
+                    <span className={participant.selectedAnswer ? "grid h-10 w-10 place-items-center rounded border border-show-gold/45 bg-show-gold/15 text-lg font-black text-show-gold" : "grid h-10 w-10 place-items-center rounded border border-white/10 bg-white/5 text-xs font-black text-white/45"}>
+                      {participant.selectedAnswer ?? "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -252,9 +319,20 @@ export function HostRemoteClient({ initialBundle, initialHeatmap }: { initialBun
 
         <section className="sticky bottom-3 mt-auto rounded-lg border border-white/10 bg-show-navy/95 p-3 shadow-2xl backdrop-blur">
           <div className="grid gap-3">
-            {!active && !locked && !revealed && !preview && <RemoteButton icon={<Play size={24} />} label="Frage anzeigen" onClick={() => action("start")} />}
+            {finalIntro && <RemoteButton icon={<Play size={24} />} label="Letzte Frage anzeigen" onClick={() => action("start")} />}
+            {!active && !locked && !revealed && !preview && !countdown && !finalIntro && <RemoteButton icon={<Play size={24} />} label="Frage anzeigen" onClick={() => action("start")} />}
             {preview && <RemoteButton icon={<Play size={24} />} label="Timer starten" onClick={() => action("timer")} />}
             {preview && <RemoteButton icon={<SkipForward size={24} />} label="Frage überspringen" onClick={() => action("next")} tone="secondary" />}
+            {(active || locked || revealed) && heatmap && <RemoteButton icon={<Users size={24} />} label={showLiveAnswers ? "Live-Antworten ausblenden" : "Live-Antworten anzeigen"} onClick={() => setShowLiveAnswers((value) => !value)} tone="secondary" />}
+            {(active || locked || revealed) && heatmap && (
+              <RemoteButton
+                icon={<Users size={24} />}
+                label={session.showParticipantAnswerStats ? "Stimmen bei Teilnehmern ausblenden" : "Stimmen bei Teilnehmern zeigen"}
+                onClick={() => action("participant-answer-stats")}
+                tone="secondary"
+              />
+            )}
+            <RemoteButton icon={blackoutActive ? <Eye size={24} /> : <EyeOff size={24} />} label={blackoutActive ? "Blackout beenden" : "Blackout aktivieren"} onClick={() => action("blackout")} tone="secondary" />
             {active && <RemoteButton icon={<Lock size={24} />} label="Antworten sperren" onClick={() => action("lock")} />}
             {locked && <RemoteButton icon={<Eye size={24} />} label="Antwort auflösen" onClick={() => action("reveal")} />}
             {revealed && <RemoteButton icon={<SkipForward size={24} />} label="Nächste Frage starten" onClick={() => action("next")} />}
