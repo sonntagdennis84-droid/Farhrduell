@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Archive, BookOpen, Download, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GameMode, Quiz, QuizCategory } from "@/types/domain";
@@ -39,7 +40,7 @@ export default function QuizzesPage() {
   async function loadQuizzes() {
     const response = await fetch("/api/quizzes");
     if (response.status === 401) {
-      router.push("/login?next=/quizzes");
+      router.push("/?next=/quizzes");
       return;
     }
     if (!response.ok) throw new Error("Quizze konnten nicht geladen werden.");
@@ -86,7 +87,7 @@ export default function QuizzesPage() {
 
   async function startSession(quiz: Quiz) {
     if (quiz.isArchived) {
-      setError("Archivierte Quizze kÃ¶nnen nicht gestartet werden.");
+      setError("Archivierte Quizze können nicht gestartet werden.");
       return;
     }
     const response = await fetch("/api/sessions", {
@@ -95,7 +96,7 @@ export default function QuizzesPage() {
       body: JSON.stringify({ quizId: quiz.id, gameMode, teamCount })
     });
     if (response.status === 401) {
-      router.push("/login?next=/quizzes");
+      router.push("/?next=/quizzes");
       return;
     }
     const result = await response.json().catch(() => null);
@@ -148,7 +149,7 @@ export default function QuizzesPage() {
     const result = await response.json().catch(() => null);
     setBusyQuizId(null);
     if (!response.ok) {
-      setError(result?.error ?? "Status konnte nicht geÃ¤ndert werden.");
+      setError(result?.error ?? "Status konnte nicht geändert werden.");
       return;
     }
     setQuizzes((items) => items.map((item) => (item.id === result.id ? result : item)));
@@ -157,16 +158,13 @@ export default function QuizzesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-black uppercase text-show-gold">Bibliothek</p>
           <h1 className="mt-1 text-4xl font-black">Quizbibliothek</h1>
-          <p className="mt-2 text-white/70">Suchen, favorisieren, prüfen und direkt aus der Vorschau starten.</p>
+          <p className="mt-2 text-white/65">Suchen, favorisieren, prüfen und direkt aus der Vorschau starten.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link className="rounded border border-white/20 px-5 py-3 font-black hover:border-show-gold hover:text-show-gold" href="/dashboard">
-            Start
-          </Link>
           <Link className="rounded border border-white/20 px-5 py-3 font-black hover:border-show-gold hover:text-show-gold" href="/quizzes/import">
             Import
           </Link>
@@ -176,15 +174,44 @@ export default function QuizzesPage() {
         </div>
       </div>
 
+      <nav className="mt-6 flex flex-wrap gap-2 rounded-lg border border-white/10 bg-show-panel/80 p-2">
+        <Link className="rounded px-4 py-3 font-black text-white/75 hover:bg-white/10 hover:text-white" href="/dashboard">Start</Link>
+        <Link className="rounded bg-show-gold px-4 py-3 font-black text-show-navy" href="/quizzes">Bibliothek</Link>
+        <Link className="rounded px-4 py-3 font-black text-white/75 hover:bg-white/10 hover:text-white" href="/cloud">Cloud</Link>
+      </nav>
+
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { icon: BookOpen, label: "Quizze", value: quizzes.length, text: "gesamt in der Bibliothek" },
+          { icon: Search, label: "Treffer", value: visibleQuizzes.length, text: "passen zu Suche und Filter" },
+          { icon: Archive, label: "Archiv", value: quizzes.filter((quiz) => quiz.isArchived).length, text: "ausgeblendete Quizze" },
+          { icon: Download, label: "Import", value: "Word/Excel", text: "schnell neue Pakete laden" }
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <article key={item.label} className="rounded-lg border border-white/10 bg-show-panel/90 p-5 shadow-xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black uppercase text-show-gold">{item.label}</p>
+                  <p className="mt-2 text-2xl font-black">{item.value}</p>
+                  <p className="mt-1 text-sm font-semibold text-white/55">{item.text}</p>
+                </div>
+                <span className="grid h-12 w-12 place-items-center rounded border border-show-gold/30 bg-show-gold/10 text-show-gold">
+                  <Icon size={24} />
+                </span>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
       <section className="mt-6 grid gap-4 rounded-lg border border-white/10 bg-show-panel/80 p-4 xl:grid-cols-[1fr_auto]">
         <div className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
           <input className="rounded border border-white/15 bg-white/10 px-3 py-3" placeholder="Quiz suchen" value={search} onChange={(event) => setSearch(event.target.value)} />
           <select className="rounded border border-white/15 bg-white/10 px-3 py-3" value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}>
             <option value="">Alle Kategorien</option>
             {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
+              <option key={category.id} value={category.id}>{category.name}</option>
             ))}
           </select>
           <select className="rounded border border-white/15 bg-white/10 px-3 py-3" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
@@ -203,7 +230,18 @@ export default function QuizzesPage() {
 
       {error && <p className="mt-4 rounded border border-show-red/30 bg-show-red/10 p-3 font-bold text-show-red">{error}</p>}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black">Alle Quizze</h2>
+          <p className="mt-1 text-sm font-semibold text-white/55">Kartenansicht im Dashboard-Stil.</p>
+        </div>
+        <Link className="inline-flex items-center gap-2 rounded border border-show-gold bg-show-gold px-4 py-3 font-black text-show-navy shadow-glow" href="/quizzes/new">
+          <Plus size={18} />
+          Neues Quiz
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleQuizzes.map((quiz) => (
           <div key={quiz.id} className={quiz.isArchived ? "opacity-75" : ""}>
             <QuizLibraryCard
@@ -236,27 +274,20 @@ export default function QuizzesPage() {
                 <h2 className="mt-2 text-3xl font-black">{previewQuiz.title}</h2>
                 <p className="mt-2 text-white/70">{previewQuiz.description}</p>
               </div>
-              <button className="rounded border border-white/20 px-4 py-2 font-bold" onClick={() => setPreviewQuiz(null)} type="button">
-                SchlieÃŸen
-              </button>
+              <button className="rounded border border-white/20 px-4 py-2 font-bold" onClick={() => setPreviewQuiz(null)} type="button">Schließen</button>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-4">
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-black uppercase text-white/45">Kategorie</p>
-                <p className="mt-1 font-black">{previewQuiz.category?.name ?? "Ohne Kategorie"}</p>
-              </div>
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-black uppercase text-white/45">Fragen</p>
-                <p className="mt-1 font-black">{previewQuiz.questions.length}</p>
-              </div>
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-black uppercase text-white/45">Fragedauer</p>
-                <p className="mt-1 font-black">Ã˜ {averageQuestionTime(previewQuiz)} s</p>
-              </div>
-              <div className="rounded border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-black uppercase text-white/45">Medien</p>
-                <p className="mt-1 font-black">{hasMedia(previewQuiz) ? "Ja" : "Nein"}</p>
-              </div>
+              {[
+                ["Kategorie", previewQuiz.category?.name ?? "Ohne Kategorie"],
+                ["Fragen", previewQuiz.questions.length],
+                ["Fragedauer", `Ø ${averageQuestionTime(previewQuiz)} s`],
+                ["Medien", hasMedia(previewQuiz) ? "Ja" : "Nein"]
+              ].map(([label, value]) => (
+                <div key={label} className="rounded border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs font-black uppercase text-white/45">{label}</p>
+                  <p className="mt-1 font-black">{value}</p>
+                </div>
+              ))}
             </div>
             <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4">
               <p className="text-sm font-black uppercase text-show-gold">Spielmodus</p>
@@ -265,7 +296,7 @@ export default function QuizzesPage() {
                   { value: "classic", label: "Classic", text: "Normales Quiz mit Einzelwertung." },
                   { value: "team_battle", label: "Team Battle", text: "Teilnehmer werden automatisch Teams zugeordnet." },
                   { value: "knockout", label: "K.O.-Modus", text: "Falsche oder fehlende Antwort scheidet aus." },
-                  { value: "survival", label: "Ãœberleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
+                  { value: "survival", label: "Überleben", text: "Drei Leben, falsche oder fehlende Antwort kostet eins." }
                 ].map((mode) => (
                   <button
                     key={mode.value}
@@ -288,22 +319,14 @@ export default function QuizzesPage() {
             <div className="mt-5 space-y-2">
               {previewQuiz.questions.slice(0, 8).map((question, index) => (
                 <div key={question.id ?? index} className="rounded border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="font-bold">
-                    {index + 1}. {question.questionText}
-                  </p>
-                  <p className="mt-1 text-sm text-white/55">
-                    {question.timeLimitSeconds}s Â· Antwort {question.correctAnswer} Â· {question.mediaUrl ? "mit Medium" : "ohne Medium"}
-                  </p>
+                  <p className="font-bold">{index + 1}. {question.questionText}</p>
+                  <p className="mt-1 text-sm text-white/55">{question.timeLimitSeconds}s · Antwort {question.correctAnswer} · {question.mediaUrl ? "mit Medium" : "ohne Medium"}</p>
                 </div>
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
-              <PrimaryButton disabled={previewQuiz.isArchived} onClick={() => startSession(previewQuiz)}>
-                Quiz starten
-              </PrimaryButton>
-              <Link className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" href={`/quizzes/${previewQuiz.id}/edit`}>
-                Bearbeiten
-              </Link>
+              <PrimaryButton disabled={previewQuiz.isArchived} onClick={() => startSession(previewQuiz)}>Quiz starten</PrimaryButton>
+              <Link className="rounded border border-white/20 px-5 py-3 font-bold hover:border-show-gold hover:text-show-gold" href={`/quizzes/${previewQuiz.id}/edit`}>Bearbeiten</Link>
             </div>
           </section>
         </div>
@@ -311,4 +334,3 @@ export default function QuizzesPage() {
     </AppShell>
   );
 }
-
